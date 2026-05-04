@@ -1,0 +1,12 @@
+[project]
+name = "local-eval"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "dotenv>=0.9.9",
+    "mlx-lm>=0.31.3",
+    "openai>=2.33.0",
+    "tiktoken>=0.12.0",
+]
