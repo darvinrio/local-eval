@@ -1,0 +1,15 @@
+target-version = "py312"
+
+[lint]
+select = ["E", "F", "I", "D", "UP", "ANN", "TC"]
+ignore = [
+    "D415", # fullstop
+    "D212", # first line
+    "D403", # CAPITALIZE
+]
+
+[lint.per-file-ignores]
+"*.ipynb" = ["E501"]
+
+[lint.pydocstyle]
+convention = "google"
