@@ -1,0 +1,80 @@
+{
+  "model": "Jiunsong/supergemma4-26b-uncensored-mlx-4bit-v2",
+  "prompt": "Explain what a dbt model is in one paragraph.",
+  "prompt_tokens": 27,
+  "runs": 10,
+  "avg_ttft_ms": 617.8411540982779,
+  "avg_tok_per_sec": 73.86655211902567,
+  "detail": [
+    {
+      "ttft_ms": 3809.5590839948272,
+      "gen_toks": 529,
+      "gen_time_s": 7.0863961660070345,
+      "tok_per_sec": 74.65007425601992,
+      "output_preview": "<|channel>thought\n\n*   Topic: dbt model.\n*   Constraint: One paragraph.\n*   Goal: Explain what it is.\n\n    *   What is d"
+    },
+    {
+      "ttft_ms": 260.4922919999808,
+      "gen_toks": 529,
+      "gen_time_s": 7.008457957999781,
+      "tok_per_sec": 75.48022734390163,
+      "output_preview": "<|channel>thought\n\n*   Topic: dbt model.\n*   Constraint: One paragraph.\n*   Goal: Explain what it is.\n\n    *   What is d"
+    },
+    {
+      "ttft_ms": 250.3540830075508,
+      "gen_toks": 529,
+      "gen_time_s": 6.91407645799336,
+      "tok_per_sec": 76.51058000500173,
+      "output_preview": "<|channel>thought\n\n*   Topic: dbt model.\n*   Constraint: One paragraph.\n*   Goal: Explain what it is.\n\n    *   What is d"
+    },
+    {
+      "ttft_ms": 272.0591659890488,
+      "gen_toks": 529,
+      "gen_time_s": 7.366366917005507,
+      "tok_per_sec": 71.81287681703522,
+      "output_preview": "<|channel>thought\n\n*   Topic: dbt model.\n*   Constraint: One paragraph.\n*   Goal: Explain what it is.\n\n    *   What is d"
+    },
+    {
+      "ttft_ms": 272.73916600097436,
+      "gen_toks": 529,
+      "gen_time_s": 7.117341249992023,
+      "tok_per_sec": 74.32550743588315,
+      "output_preview": "<|channel>thought\n\n*   Topic: dbt model.\n*   Constraint: One paragraph.\n*   Goal: Explain what it is.\n\n    *   What is d"
+    },
+    {
+      "ttft_ms": 264.40166699467227,
+      "gen_toks": 529,
+      "gen_time_s": 7.160836417009705,
+      "tok_per_sec": 73.87405174393095,
+      "output_preview": "<|channel>thought\n\n*   Topic: dbt model.\n*   Constraint: One paragraph.\n*   Goal: Explain what it is.\n\n    *   What is d"
+    },
+    {
+      "ttft_ms": 270.22308300365694,
+      "gen_toks": 529,
+      "gen_time_s": 7.2713123749999795,
+      "tok_per_sec": 72.75165372055709,
+      "output_preview": "<|channel>thought\n\n*   Topic: dbt model.\n*   Constraint: One paragraph.\n*   Goal: Explain what it is.\n\n    *   What is d"
+    },
+    {
+      "ttft_ms": 252.89124999835622,
+      "gen_toks": 529,
+      "gen_time_s": 7.197124875005102,
+      "tok_per_sec": 73.50157308471391,
+      "output_preview": "<|channel>thought\n\n*   Topic: dbt model.\n*   Constraint: One paragraph.\n*   Goal: Explain what it is.\n\n    *   What is d"
+    },
+    {
+      "ttft_ms": 256.72399999166373,
+      "gen_toks": 529,
+      "gen_time_s": 7.251397542000632,
+      "tok_per_sec": 72.95145479695367,
+      "output_preview": "<|channel>thought\n\n*   Topic: dbt model.\n*   Constraint: One paragraph.\n*   Goal: Explain what it is.\n\n    *   What is d"
+    },
+    {
+      "ttft_ms": 268.967750002048,
+      "gen_toks": 529,
+      "gen_time_s": 7.265732792002382,
+      "tok_per_sec": 72.8075219862595,
+      "output_preview": "<|channel>thought\n\n*   Topic: dbt model.\n*   Constraint: One paragraph.\n*   Goal: Explain what it is.\n\n    *   What is d"
+    }
+  ]
+}

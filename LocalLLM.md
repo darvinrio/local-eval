@@ -7,6 +7,9 @@ A write-up where we analyze and choose an appropriate local setup
   - Choices of inference engines
 [] - Model Choices
   - Model preferences
+  - Quantization to go with 
+  - Context size and Output/Input token counts
 [] - Design Eval or Benchmark
   - List out your local model use case
   - Define Benchmarks that can standardize and test multiple setups
+  - Because, you might have to compare different quants of different models, hence different results and tps

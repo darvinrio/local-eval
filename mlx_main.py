@@ -3,64 +3,54 @@ import os
 import re
 import time
 
-from dotenv import load_dotenv
-from openai import OpenAI
-from transformers import AutoTokenizer
+import mlx.core as mx
+from mlx_lm import load, stream_generate
 
-load_dotenv()
-
-api_key = os.environ.get("UNSLOTH_LOCAL_KEY")
-client = OpenAI(base_url="http://localhost:8888/v1", api_key=api_key)
-# MODEL_NAME = "unsloth/gemma-4-E4B-it-GGUF"
-# MODEL_NAME = "Qwen3-Coder-30B-A3B-Instruct-IQ4_XS"
 MODEL_NAME = "Jiunsong/supergemma4-26b-uncensored-mlx-4bit-v2"
-tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
+
+model, tokenizer = load(MODEL_NAME)
 
 
 def sanitize_filename(name: str) -> str:
+    """Convert a model name/path to a safe filename."""
+    # Take only the last part after '/' (repo name), then replace unsafe chars
     basename = name.split("/")[-1]
     return re.sub(r"[^\w\-.]", "_", basename)
 
 
 def measure_latency(prompt: str, repetitions: int = 3, max_tokens: int = 8192):
-    prompt_tokens = len(tokenizer.encode(prompt))
+    messages = [{"role": "user", "content": prompt}]
+    formatted_prompt = tokenizer.apply_chat_template(
+        messages, add_generation_prompt=True, tokenize=False
+    )
+    prompt_tokens = len(tokenizer.encode(formatted_prompt))
 
     results = []
     for i in range(repetitions):
         print(f"  Run {i + 1}/{repetitions}...", end=" ", flush=True)
 
         t0 = time.perf_counter()
-
-        stream = client.chat.completions.create(
-            model=MODEL_NAME,
-            messages=[{"role": "user", "content": prompt}],
-            max_tokens=max_tokens,
-            stream=True,
-        )
-
         first_token_time = None
         tokens = 0
         generated_text = []
 
-        for chunk in stream:
+        for response in stream_generate(
+            model,
+            tokenizer,
+            formatted_prompt,
+            max_tokens=max_tokens,
+        ):
             now = time.perf_counter()
             if first_token_time is None:
                 first_token_time = now
 
-            if (
-                chunk.choices
-                and chunk.choices[0].delta
-                and chunk.choices[0].delta.content
-            ):
-                delta = chunk.choices[0].delta.content
-            else:
-                delta = ""
-
-            if delta:
-                generated_text.append(delta)
-                tokens += len(tokenizer.encode(delta))
+            chunk_text = response.text
+            if chunk_text:
+                generated_text.append(chunk_text)
+                tokens += len(tokenizer.encode(chunk_text, add_special_tokens=False))
 
         t_end = time.perf_counter()
+        mx.eval()
 
         ttft = (first_token_time - t0) * 1000
         gen_time = t_end - first_token_time
@@ -93,7 +83,7 @@ def measure_latency(prompt: str, repetitions: int = 3, max_tokens: int = 8192):
 def save_results(metrics: dict):
     os.makedirs("output", exist_ok=True)
     filename = sanitize_filename(metrics["model"])
-    filepath = f"output/oai-{filename}.json"
+    filepath = f"output/mlx-{filename}.json"
     with open(filepath, "w") as f:
         json.dump(metrics, f, indent=2)
     print(f"\nResults saved → {filepath}")
@@ -102,8 +92,7 @@ def save_results(metrics: dict):
 
 if __name__ == "__main__":
     prompt = "Explain what a dbt model is in one paragraph."
-    print(f"Model : {MODEL_NAME}")
-    print(f"Server: {client.base_url}")
+    print(f"Model: {MODEL_NAME}")
     print(f"Prompt: {prompt!r}\n")
 
     metrics = measure_latency(prompt, repetitions=10)

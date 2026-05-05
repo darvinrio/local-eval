@@ -1,0 +1,80 @@
+{
+  "model": "Jiunsong/supergemma4-26b-uncensored-mlx-4bit-v2",
+  "prompt": "Explain what a dbt model is in one paragraph.",
+  "prompt_tokens": 11,
+  "runs": 10,
+  "avg_ttft_ms": 820.9165333988494,
+  "avg_tok_per_sec": 14.59494561485656,
+  "detail": [
+    {
+      "ttft_ms": 6178.787416996784,
+      "gen_toks": 119,
+      "gen_time_s": 8.230798750009853,
+      "tok_per_sec": 14.45789207272958,
+      "output_preview": "In dbt, a model is a single `.sql` file containing a `SELECT` statement that defines a specific data transformation logi"
+    },
+    {
+      "ttft_ms": 254.48908400721848,
+      "gen_toks": 119,
+      "gen_time_s": 8.01666633298737,
+      "tok_per_sec": 14.844075461932723,
+      "output_preview": "In dbt, a model is a single `.sql` file containing a `SELECT` statement that defines a specific data transformation logi"
+    },
+    {
+      "ttft_ms": 225.82191599940415,
+      "gen_toks": 119,
+      "gen_time_s": 8.201287333999062,
+      "tok_per_sec": 14.509917181742484,
+      "output_preview": "In dbt, a model is a single `.sql` file containing a `SELECT` statement that defines a specific data transformation logi"
+    },
+    {
+      "ttft_ms": 225.0015000026906,
+      "gen_toks": 119,
+      "gen_time_s": 8.37403141699906,
+      "tok_per_sec": 14.210598703801514,
+      "output_preview": "In dbt, a model is a single `.sql` file containing a `SELECT` statement that defines a specific data transformation logi"
+    },
+    {
+      "ttft_ms": 217.6183330011554,
+      "gen_toks": 119,
+      "gen_time_s": 8.563545541997883,
+      "tok_per_sec": 13.896113404943392,
+      "output_preview": "In dbt, a model is a single `.sql` file containing a `SELECT` statement that defines a specific data transformation logi"
+    },
+    {
+      "ttft_ms": 234.85249999794178,
+      "gen_toks": 119,
+      "gen_time_s": 8.314512625001953,
+      "tok_per_sec": 14.312324169448482,
+      "output_preview": "In dbt, a model is a single `.sql` file containing a `SELECT` statement that defines a specific data transformation logi"
+    },
+    {
+      "ttft_ms": 213.71945898863487,
+      "gen_toks": 119,
+      "gen_time_s": 7.928224583010888,
+      "tok_per_sec": 15.00966562614799,
+      "output_preview": "In dbt, a model is a single `.sql` file containing a `SELECT` statement that defines a specific data transformation logi"
+    },
+    {
+      "ttft_ms": 219.0244579978753,
+      "gen_toks": 119,
+      "gen_time_s": 7.975685417011846,
+      "tok_per_sec": 14.920347754210233,
+      "output_preview": "In dbt, a model is a single `.sql` file containing a `SELECT` statement that defines a specific data transformation logi"
+    },
+    {
+      "ttft_ms": 225.71987500123214,
+      "gen_toks": 119,
+      "gen_time_s": 7.9423424169945065,
+      "tok_per_sec": 14.98298534011472,
+      "output_preview": "In dbt, a model is a single `.sql` file containing a `SELECT` statement that defines a specific data transformation logi"
+    },
+    {
+      "ttft_ms": 214.13079199555796,
+      "gen_toks": 119,
+      "gen_time_s": 8.037533833005,
+      "tok_per_sec": 14.805536433494472,
+      "output_preview": "In dbt, a model is a single `.sql` file containing a `SELECT` statement that defines a specific data transformation logi"
+    }
+  ]
+}
