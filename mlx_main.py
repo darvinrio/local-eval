@@ -7,7 +7,8 @@ import mlx.core as mx
 from mlx_lm import load, stream_generate
 
 # MODEL_NAME = "Jiunsong/supergemma4-26b-uncensored-mlx-4bit-v2"
-MODEL_NAME = "leonsarmiento/Qwen3.6-27B-3bit-mlx"
+# MODEL_NAME = "leonsarmiento/Qwen3.6-27B-3bit-mlx"
+MODEL_NAME = "unsloth/Qwen3.6-35B-A3B-UD-MLX-3bit"
 
 model, tokenizer = load(MODEL_NAME)
 

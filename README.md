@@ -8,6 +8,7 @@ Evaluating local models
 * `unsloth/gemma-4-E4B-it`
 * `Jiunsong/supergemma4-26b-uncensored-mlx-4bit-v2`
 * `leonsarmiento/Qwen3.6-27B-3bit-mlx`
+* `unsloth/Qwen3.6-35B-A3B-UD-MLX-3bit`
 
 ## run mlx_lm
 
