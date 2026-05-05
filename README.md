@@ -9,6 +9,7 @@ Evaluating local models
 * `Jiunsong/supergemma4-26b-uncensored-mlx-4bit-v2`
 * `leonsarmiento/Qwen3.6-27B-3bit-mlx`
 * `unsloth/Qwen3.6-35B-A3B-UD-MLX-3bit`
+* `mlx-community/Qwen3.5-9B-MLX-4bit`
 
 ## run mlx_lm
 

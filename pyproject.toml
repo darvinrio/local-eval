@@ -6,7 +6,9 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "dotenv>=0.9.9",
+    "loguru>=0.7.3",
     "mlx-lm>=0.31.3",
+    "msgspec>=0.21.1",
     "openai>=2.33.0",
     "tiktoken>=0.12.0",
 ]
