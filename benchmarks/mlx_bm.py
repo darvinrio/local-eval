@@ -1,4 +1,8 @@
+"""
+benchmarks/mlx_bm.py
 
+MLX benchmark runner.
+"""
 from typing import cast, Any
 
 import time
@@ -9,6 +13,7 @@ from mlx_lm import stream_generate, load
 from mlx_lm.tokenizer_utils import TokenizerWrapper
 
 from models.results import BenchmarkResult
+from utils.basic import unload
 
 def run_mlx_bm(
     model_name: str,
@@ -22,6 +27,7 @@ def run_mlx_bm(
         load(model_name, return_config=True),
     )
     model, tokenizer, config = load_result
+    mx.random.seed(seed)
 
     messages = [{"role": "user", "content": prompt}]
     tokenized_prompt = tokenizer.apply_chat_template(
@@ -49,5 +55,5 @@ def run_mlx_bm(
         prompt_tokens=response.prompt_tokens,
         generation_tokens=response.generation_tokens,
     )
-
+    unload(model=model, tokenizer=tokenizer)
     return bm_result
