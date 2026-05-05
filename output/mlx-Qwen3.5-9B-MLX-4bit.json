@@ -1,0 +1,80 @@
+{
+  "model": "mlx-community/Qwen3.5-9B-MLX-4bit",
+  "prompt": "Explain what a dbt model is in one paragraph.",
+  "prompt_tokens": 22,
+  "runs": 10,
+  "avg_ttft_ms": 290.95689589885296,
+  "avg_tok_per_sec": 49.74222587037082,
+  "detail": [
+    {
+      "ttft_ms": 760.966500005452,
+      "gen_toks": 845,
+      "gen_time_s": 16.864912417004234,
+      "tok_per_sec": 50.1040253934565,
+      "output_preview": "Thinking Process:\n\n1.  **Analyze the Request:**\n    *   Topic: dbt model.\n    *   Constraint: Explain in one paragraph.\n"
+    },
+    {
+      "ttft_ms": 241.03912500140723,
+      "gen_toks": 845,
+      "gen_time_s": 16.900531874998705,
+      "tok_per_sec": 49.99842645485172,
+      "output_preview": "Thinking Process:\n\n1.  **Analyze the Request:**\n    *   Topic: dbt model.\n    *   Constraint: Explain in one paragraph.\n"
+    },
+    {
+      "ttft_ms": 230.32212498947047,
+      "gen_toks": 845,
+      "gen_time_s": 16.88359075000335,
+      "tok_per_sec": 50.04859526104258,
+      "output_preview": "Thinking Process:\n\n1.  **Analyze the Request:**\n    *   Topic: dbt model.\n    *   Constraint: Explain in one paragraph.\n"
+    },
+    {
+      "ttft_ms": 238.60483399766963,
+      "gen_toks": 845,
+      "gen_time_s": 16.914952040999196,
+      "tok_per_sec": 49.955802295617055,
+      "output_preview": "Thinking Process:\n\n1.  **Analyze the Request:**\n    *   Topic: dbt model.\n    *   Constraint: Explain in one paragraph.\n"
+    },
+    {
+      "ttft_ms": 239.29391599085648,
+      "gen_toks": 845,
+      "gen_time_s": 16.964305375004187,
+      "tok_per_sec": 49.81046858806569,
+      "output_preview": "Thinking Process:\n\n1.  **Analyze the Request:**\n    *   Topic: dbt model.\n    *   Constraint: Explain in one paragraph.\n"
+    },
+    {
+      "ttft_ms": 240.70583301363513,
+      "gen_toks": 845,
+      "gen_time_s": 17.055364332991303,
+      "tok_per_sec": 49.54452942206936,
+      "output_preview": "Thinking Process:\n\n1.  **Analyze the Request:**\n    *   Topic: dbt model.\n    *   Constraint: Explain in one paragraph.\n"
+    },
+    {
+      "ttft_ms": 241.0837920033373,
+      "gen_toks": 845,
+      "gen_time_s": 17.04454029200133,
+      "tok_per_sec": 49.57599240130531,
+      "output_preview": "Thinking Process:\n\n1.  **Analyze the Request:**\n    *   Topic: dbt model.\n    *   Constraint: Explain in one paragraph.\n"
+    },
+    {
+      "ttft_ms": 240.10366699076258,
+      "gen_toks": 845,
+      "gen_time_s": 17.07462141700671,
+      "tok_per_sec": 49.48865215590437,
+      "output_preview": "Thinking Process:\n\n1.  **Analyze the Request:**\n    *   Topic: dbt model.\n    *   Constraint: Explain in one paragraph.\n"
+    },
+    {
+      "ttft_ms": 239.59450000256766,
+      "gen_toks": 845,
+      "gen_time_s": 17.09470220799267,
+      "tok_per_sec": 49.43051886595124,
+      "output_preview": "Thinking Process:\n\n1.  **Analyze the Request:**\n    *   Topic: dbt model.\n    *   Constraint: Explain in one paragraph.\n"
+    },
+    {
+      "ttft_ms": 237.8546669933712,
+      "gen_toks": 845,
+      "gen_time_s": 17.0827002080041,
+      "tok_per_sec": 49.46524786544432,
+      "output_preview": "Thinking Process:\n\n1.  **Analyze the Request:**\n    *   Topic: dbt model.\n    *   Constraint: Explain in one paragraph.\n"
+    }
+  ]
+}
