@@ -1,0 +1,80 @@
+{
+  "model": "leonsarmiento/Qwen3.6-27B-3bit-mlx",
+  "prompt": "Explain what a dbt model is in one paragraph.",
+  "prompt_tokens": 22,
+  "runs": 10,
+  "avg_ttft_ms": 662.9147419007495,
+  "avg_tok_per_sec": 16.647658130524388,
+  "detail": [
+    {
+      "ttft_ms": 1671.2577089929255,
+      "gen_toks": 1302,
+      "gen_time_s": 73.40540816599969,
+      "tok_per_sec": 17.73711273501327,
+      "output_preview": "Here's a thinking process:\n\n1.  **Analyze User Request:**\n   - **Topic:** dbt model\n   - **Format:** One paragraph\n   - "
+    },
+    {
+      "ttft_ms": 523.8898340030573,
+      "gen_toks": 1302,
+      "gen_time_s": 72.40508366600261,
+      "tok_per_sec": 17.98216277196772,
+      "output_preview": "Here's a thinking process:\n\n1.  **Analyze User Request:**\n   - **Topic:** dbt model\n   - **Format:** One paragraph\n   - "
+    },
+    {
+      "ttft_ms": 537.0519580028486,
+      "gen_toks": 1302,
+      "gen_time_s": 75.6532906670036,
+      "tok_per_sec": 17.210090777556502,
+      "output_preview": "Here's a thinking process:\n\n1.  **Analyze User Request:**\n   - **Topic:** dbt model\n   - **Format:** One paragraph\n   - "
+    },
+    {
+      "ttft_ms": 547.0846669923048,
+      "gen_toks": 1302,
+      "gen_time_s": 78.28157604200533,
+      "tok_per_sec": 16.63226605582591,
+      "output_preview": "Here's a thinking process:\n\n1.  **Analyze User Request:**\n   - **Topic:** dbt model\n   - **Format:** One paragraph\n   - "
+    },
+    {
+      "ttft_ms": 552.7162090002093,
+      "gen_toks": 1302,
+      "gen_time_s": 79.68312204099493,
+      "tok_per_sec": 16.339721218881888,
+      "output_preview": "Here's a thinking process:\n\n1.  **Analyze User Request:**\n   - **Topic:** dbt model\n   - **Format:** One paragraph\n   - "
+    },
+    {
+      "ttft_ms": 563.2671250059502,
+      "gen_toks": 1302,
+      "gen_time_s": 80.49313008299214,
+      "tok_per_sec": 16.175293452467034,
+      "output_preview": "Here's a thinking process:\n\n1.  **Analyze User Request:**\n   - **Topic:** dbt model\n   - **Format:** One paragraph\n   - "
+    },
+    {
+      "ttft_ms": 556.8210420024116,
+      "gen_toks": 1302,
+      "gen_time_s": 80.96521108300658,
+      "tok_per_sec": 16.080980739557052,
+      "output_preview": "Here's a thinking process:\n\n1.  **Analyze User Request:**\n   - **Topic:** dbt model\n   - **Format:** One paragraph\n   - "
+    },
+    {
+      "ttft_ms": 558.3141249953769,
+      "gen_toks": 1302,
+      "gen_time_s": 80.76749341700634,
+      "tok_per_sec": 16.12034674987019,
+      "output_preview": "Here's a thinking process:\n\n1.  **Analyze User Request:**\n   - **Topic:** dbt model\n   - **Format:** One paragraph\n   - "
+    },
+    {
+      "ttft_ms": 565.8732500014594,
+      "gen_toks": 1302,
+      "gen_time_s": 80.44532720900315,
+      "tok_per_sec": 16.18490526637183,
+      "output_preview": "Here's a thinking process:\n\n1.  **Analyze User Request:**\n   - **Topic:** dbt model\n   - **Format:** One paragraph\n   - "
+    },
+    {
+      "ttft_ms": 552.8715000109514,
+      "gen_toks": 1302,
+      "gen_time_s": 81.30537445899972,
+      "tok_per_sec": 16.013701537732494,
+      "output_preview": "Here's a thinking process:\n\n1.  **Analyze User Request:**\n   - **Topic:** dbt model\n   - **Format:** One paragraph\n   - "
+    }
+  ]
+}

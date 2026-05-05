@@ -1,0 +1,80 @@
+{
+  "model": "leonsarmiento/Qwen3.6-27B-3bit-mlx",
+  "prompt": "Explain what a dbt model is in one paragraph.",
+  "prompt_tokens": 12,
+  "runs": 10,
+  "avg_ttft_ms": 469.4280625961255,
+  "avg_tok_per_sec": 16.64107217661771,
+  "detail": [
+    {
+      "ttft_ms": 2598.430832993472,
+      "gen_toks": 833,
+      "gen_time_s": 49.14098558299884,
+      "tok_per_sec": 16.951226967010417,
+      "output_preview": "\n\nA dbt model is a modular, version-controlled SQL file that defines how raw or intermediate data should be transformed "
+    },
+    {
+      "ttft_ms": 261.90266699995846,
+      "gen_toks": 833,
+      "gen_time_s": 49.181525957988924,
+      "tok_per_sec": 16.93725405575159,
+      "output_preview": "\n\nA dbt model is a modular, version-controlled SQL file that defines how raw or intermediate data should be transformed "
+    },
+    {
+      "ttft_ms": 229.23908398661297,
+      "gen_toks": 833,
+      "gen_time_s": 49.20010725001339,
+      "tok_per_sec": 16.930857401734084,
+      "output_preview": "\n\nA dbt model is a modular, version-controlled SQL file that defines how raw or intermediate data should be transformed "
+    },
+    {
+      "ttft_ms": 228.32104099506978,
+      "gen_toks": 833,
+      "gen_time_s": 49.04234783399443,
+      "tok_per_sec": 16.985320580891802,
+      "output_preview": "\n\nA dbt model is a modular, version-controlled SQL file that defines how raw or intermediate data should be transformed "
+    },
+    {
+      "ttft_ms": 228.50300000573043,
+      "gen_toks": 833,
+      "gen_time_s": 51.53580454199982,
+      "tok_per_sec": 16.16351985581471,
+      "output_preview": "\n\nA dbt model is a modular, version-controlled SQL file that defines how raw or intermediate data should be transformed "
+    },
+    {
+      "ttft_ms": 230.79116699227598,
+      "gen_toks": 833,
+      "gen_time_s": 51.0085003330023,
+      "tok_per_sec": 16.330611458126956,
+      "output_preview": "\n\nA dbt model is a modular, version-controlled SQL file that defines how raw or intermediate data should be transformed "
+    },
+    {
+      "ttft_ms": 231.03829199681059,
+      "gen_toks": 833,
+      "gen_time_s": 50.77056916699803,
+      "tok_per_sec": 16.407143226226978,
+      "output_preview": "\n\nA dbt model is a modular, version-controlled SQL file that defines how raw or intermediate data should be transformed "
+    },
+    {
+      "ttft_ms": 231.9674589962233,
+      "gen_toks": 833,
+      "gen_time_s": 50.2798434580036,
+      "tok_per_sec": 16.567275128765385,
+      "output_preview": "\n\nA dbt model is a modular, version-controlled SQL file that defines how raw or intermediate data should be transformed "
+    },
+    {
+      "ttft_ms": 223.65495799749624,
+      "gen_toks": 833,
+      "gen_time_s": 49.99833483299881,
+      "tok_per_sec": 16.660554852123227,
+      "output_preview": "\n\nA dbt model is a modular, version-controlled SQL file that defines how raw or intermediate data should be transformed "
+    },
+    {
+      "ttft_ms": 230.43212499760557,
+      "gen_toks": 833,
+      "gen_time_s": 50.55544766699313,
+      "tok_per_sec": 16.476958239731953,
+      "output_preview": "\n\nA dbt model is a modular, version-controlled SQL file that defines how raw or intermediate data should be transformed "
+    }
+  ]
+}

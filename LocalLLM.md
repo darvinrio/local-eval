@@ -9,6 +9,7 @@ A write-up where we analyze and choose an appropriate local setup
   - Model preferences
   - Quantization to go with 
   - Context size and Output/Input token counts
+  - Dense or MoE - MoE activate few layers and thus can give faster tps
 [] - Design Eval or Benchmark
   - List out your local model use case
   - Define Benchmarks that can standardize and test multiple setups

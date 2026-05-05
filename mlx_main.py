@@ -6,7 +6,8 @@ import time
 import mlx.core as mx
 from mlx_lm import load, stream_generate
 
-MODEL_NAME = "Jiunsong/supergemma4-26b-uncensored-mlx-4bit-v2"
+# MODEL_NAME = "Jiunsong/supergemma4-26b-uncensored-mlx-4bit-v2"
+MODEL_NAME = "leonsarmiento/Qwen3.6-27B-3bit-mlx"
 
 model, tokenizer = load(MODEL_NAME)
 
