@@ -22,12 +22,13 @@ def run_mlx_bm(
     temp: float = 0.6,
     seed: int = 42,
 ) -> BenchmarkResult:
+    mx.random.seed(seed)
+
     load_result = cast(
         tuple[nn.Module, TokenizerWrapper, dict[str, Any]], # workaround for typing
         load(model_name, return_config=True),
     )
     model, tokenizer, config = load_result
-    mx.random.seed(seed)
 
     messages = [{"role": "user", "content": prompt}]
     tokenized_prompt = tokenizer.apply_chat_template(
@@ -57,3 +58,9 @@ def run_mlx_bm(
     )
     unload(model=model, tokenizer=tokenizer)
     return bm_result
+
+
+if __name__ == "__main__":
+    MODEL_NAME = "mlx-community/Qwen3.5-9B-MLX-4bit"
+    PROMPT = "Explain what a dbt model is in one paragraph."
+    run_mlx_bm(MODEL_NAME, PROMPT)
