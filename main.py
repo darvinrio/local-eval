@@ -10,11 +10,15 @@ from transformers import AutoTokenizer
 load_dotenv()
 
 api_key = os.environ.get("UNSLOTH_LOCAL_KEY")
-client = OpenAI(base_url="http://localhost:8888/v1", api_key=api_key)
+ZHYPRA_API_KEY = os.environ.get("ZHYPRA_API_KEY")
+
+client = OpenAI(base_url="https://api.zyphracloud.com/api/v1", api_key=ZHYPRA_API_KEY)
+# client = OpenAI(base_url="http://localhost:8888/v1", api_key=api_key)
 # MODEL_NAME = "unsloth/gemma-4-E4B-it-GGUF"
 # MODEL_NAME = "Qwen3-Coder-30B-A3B-Instruct-IQ4_XS"
 # MODEL_NAME = "Jiunsong/supergemma4-26b-uncensored-mlx-4bit-v2"
-MODEL_NAME = "leonsarmiento/Qwen3.6-27B-3bit-mlx"
+# MODEL_NAME = "leonsarmiento/Qwen3.6-27B-3bit-mlx"
+MODEL_NAME = "zyphra/ZAYA1-8B"
 tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
 
 
