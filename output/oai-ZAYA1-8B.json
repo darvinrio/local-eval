@@ -1,0 +1,80 @@
+{
+  "model": "zyphra/ZAYA1-8B",
+  "prompt": "Explain what a dbt model is in one paragraph.",
+  "prompt_tokens": 13,
+  "runs": 10,
+  "avg_ttft_ms": 6987.461220804835,
+  "avg_tok_per_sec": 61.819735931678096,
+  "detail": [
+    {
+      "ttft_ms": 1638.1019169930369,
+      "gen_toks": 113,
+      "gen_time_s": 1.8283142920117825,
+      "tok_per_sec": 61.80556619489128,
+      "output_preview": "\n\nA dbt model is a piece of data transformation and modeling code that lives inside a .sql or .sqlf tags files in a dbt "
+    },
+    {
+      "ttft_ms": 1116.9837920169812,
+      "gen_toks": 160,
+      "gen_time_s": 2.722728124994319,
+      "tok_per_sec": 58.76458928499659,
+      "output_preview": "\n\nA dbt model is a type of data model in the dbt (data build tool) framework that allows you to define and manage data t"
+    },
+    {
+      "ttft_ms": 1099.8967080086004,
+      "gen_toks": 119,
+      "gen_time_s": 2.045397084002616,
+      "tok_per_sec": 58.179412169264545,
+      "output_preview": "\n\nA dbt (data build tool) model is a representation of data in a warehouse, organized and structured to support SQL quer"
+    },
+    {
+      "ttft_ms": 524.5714999909978,
+      "gen_toks": 89,
+      "gen_time_s": 1.4211427090049256,
+      "tok_per_sec": 62.625659925678534,
+      "output_preview": "\n\nA dbt model is a template in the dbt (data build tool) suite that allows you to define data transformations and analys"
+    },
+    {
+      "ttft_ms": 717.522833001567,
+      "gen_toks": 137,
+      "gen_time_s": 2.093754999979865,
+      "tok_per_sec": 65.43267956437954,
+      "output_preview": "\n\nA dbt model is a piece of data transformation and summarization built using Jinja, our templating language, and loaded"
+    },
+    {
+      "ttft_ms": 61699.8247919837,
+      "gen_toks": 124,
+      "gen_time_s": 2.0762432500196155,
+      "tok_per_sec": 59.723252561485026,
+      "output_preview": "\n\nA dbt (data build tool) model is a fundamental concept in modern data analytics and transformation pipelines. It is a "
+    },
+    {
+      "ttft_ms": 1202.2869999927934,
+      "gen_toks": 139,
+      "gen_time_s": 2.203394834010396,
+      "tok_per_sec": 63.08447213112789,
+      "output_preview": "\n\nA dbt (data build tool) model is a piece of modular, reusable code used in data analytics to transform and analyze dat"
+    },
+    {
+      "ttft_ms": 513.7507910258137,
+      "gen_toks": 85,
+      "gen_time_s": 1.3715986250026617,
+      "tok_per_sec": 61.97148236411731,
+      "output_preview": "\n\nA dbt model is a piece of data transformation and modeling code written in the dbt (data build tool) framework. It is "
+    },
+    {
+      "ttft_ms": 725.5660830123816,
+      "gen_toks": 129,
+      "gen_time_s": 2.0244477500091307,
+      "tok_per_sec": 63.72108146501592,
+      "output_preview": "\n\nA dbt (data build tool) model is a fundamental concept in data transformation and modeling within data warehouses. It "
+    },
+    {
+      "ttft_ms": 636.1067920224741,
+      "gen_toks": 102,
+      "gen_time_s": 1.6219010409840848,
+      "tok_per_sec": 62.889163655824355,
+      "output_preview": "\n\nA dbt model is a piece of data transformed by a Jinja2 template within the dbt (data build tool) platform. It is used "
+    }
+  ]
+}
