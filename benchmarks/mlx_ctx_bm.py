@@ -194,9 +194,11 @@ def run_ctx_sweep(
             for context_size in config.context_sizes:
                 logger.info(f"Preparing task {task.task_id} at size {context_size}")
 
+                messages, actual_tokens = _build_context(task, context_size, tokenizer)
+
                 safe, reason = _memory_preflight(
                     task,
-                    context_size,
+                    actual_tokens,
                     model_config,
                     config.force_run,
                     config.memory_safety_threshold,
@@ -220,8 +222,6 @@ def run_ctx_sweep(
                         )
                     )
                     continue
-
-                messages, actual_tokens = _build_context(task, context_size, tokenizer)
 
                 # Warmup
                 for _ in range(config.warmup_runs):
