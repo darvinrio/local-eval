@@ -11,7 +11,7 @@ import mlx.nn as nn
 from mlx_lm import load
 from mlx_lm.tokenizer_utils import TokenizerWrapper
 
-from benchmarks import _build_context
+from benchmarks.mlx_ctx_bm import _build_context
 from benchmarks.tasks import TASK_REGISTRY
 
 MODEL_NAME = "mlx-community/Qwen3.5-9B-MLX-4bit"
