@@ -3,6 +3,7 @@ benchmarks/mlx_bm.py
 
 MLX benchmark runner.
 """
+
 from typing import cast, Any
 
 import time
@@ -15,6 +16,7 @@ from mlx_lm.tokenizer_utils import TokenizerWrapper
 from models.results import BenchmarkResult
 from utils.basic import unload
 
+
 def run_mlx_bm(
     model_name: str,
     prompt: str,
@@ -25,7 +27,7 @@ def run_mlx_bm(
     mx.random.seed(seed)
 
     load_result = cast(
-        tuple[nn.Module, TokenizerWrapper, dict[str, Any]], # workaround for typing
+        tuple[nn.Module, TokenizerWrapper, dict[str, Any]],  # workaround for typing
         load(model_name, return_config=True),
     )
     model, tokenizer, config = load_result
@@ -39,10 +41,7 @@ def run_mlx_bm(
     logger.success("")
 
     for response in stream_generate(
-        model,
-        tokenizer=tokenizer,
-        prompt=tokenized_prompt,
-        max_tokens=max_tokens
+        model, tokenizer=tokenizer, prompt=tokenized_prompt, max_tokens=max_tokens
     ):
         print(response.text, end="", flush=True)
 

@@ -4,11 +4,9 @@ import lm_eval
 from loguru import logger
 import mlx.core as mx
 
+
 def run_mlx_eval(
-    model_name: str,
-    max_tokens: int = 1024,
-    temp: float = 0.6,
-    seed: int = 42
+    model_name: str, max_tokens: int = 1024, temp: float = 0.6, seed: int = 42
 ) -> list[EvalResult]:
 
     mx.random.seed(seed)
@@ -37,12 +35,11 @@ def run_mlx_eval(
     eval_results: list[EvalResult] = []
     for model_name, metrics in results:
         eval_result = EvalResult(
-            task = metrics.get("alias"),
+            task=metrics.get("alias"),
             accuracy=metrics.get("acc_norm,none"),
-            stderr=metrics.get("acc_norm_stderr,none")
+            stderr=metrics.get("acc_norm_stderr,none"),
         )
         eval_results.append(eval_result)
-
 
     return eval_results
 
