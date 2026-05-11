@@ -8,6 +8,8 @@ from datetime import datetime
 
 import msgspec
 
+from models.config import MLXContextConfig
+
 
 class BenchmarkResult(msgspec.Struct):
     """BenchmarkResult"""
@@ -45,3 +47,28 @@ class ModelResult(msgspec.Struct):
     evals: list[EvalResult] = []
     ppls: list[PPLResult] = []
     errors: list[str] = []
+
+
+class ContextScaleResult(msgspec.Struct):
+    """ContextScaleResult"""
+
+    task_id: str
+    target_context_tokens: int
+    actual_context_tokens: int
+    tokenizer_time_ms: float  # separate from model TTFT
+    ttft_ms: float
+    prompt_tps: float  # mean across num_runs
+    generation_tps: float  # mean across num_runs
+    peak_memory_gb: float  # mean across num_runs
+    generation_tokens: int
+    skipped: bool = False
+    skip_reason: str = ""
+
+
+class ContextScaleSweepResult(msgspec.Struct):
+    """ContextScaleSweepResult"""
+
+    model: str
+    run_at: str  # ISO timestamp
+    config: MLXContextConfig  # snapshot of CONFIG dict
+    results: list[ContextScaleResult]
