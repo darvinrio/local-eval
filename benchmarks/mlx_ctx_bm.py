@@ -34,6 +34,9 @@ def _build_context(
     Returns:
         tuple[list[dict[str, str]], int]: Context and number of tokens.
     """
+    if not task.seed_content:
+        raise ValueError("task.seed_content must not be empty")
+
     multiplier = (target_tokens * 10) // len(task.seed_content) + 10
     raw_blob = task.seed_content * multiplier
 
