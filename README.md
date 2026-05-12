@@ -49,3 +49,13 @@ llama-server \
 ```sh
 export PYTHONPATH="$PWD:$PYTHONPATH"
 ```
+
+### gitHub
+
+```bash
+# Delete local merged branches
+git branch --merged | grep -v '\*' | xargs -n 1 git branch -d
+
+# Prune origin deleted branches
+git remote prune origin
+```
