@@ -214,6 +214,7 @@ def _single_run(
         capture_traces
         and include_final
         and per_token_timings
+        and (max_trace_tokens is None or final_token_index <= max_trace_tokens)
         and per_token_timings[-1].token_index != final_token_index
     ):
         per_token_timings.append(
