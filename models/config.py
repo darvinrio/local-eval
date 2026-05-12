@@ -42,3 +42,7 @@ class MLXContextConfig(msgspec.Struct):
     force_run: bool
     generation_headroom_gb: float
     output_dir: str
+    capture_per_token_timings: bool = True
+    per_token_timing_max_tokens: int | None = None
+    trace_stride: int = 32
+    include_final_token_in_trace: bool = True

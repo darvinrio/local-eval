@@ -36,6 +36,11 @@ CONFIG = MLXContextConfig(
     generation_headroom_gb=1.0,  # buffer on top of weight + KV estimate
     # Output
     output_dir="output",
+    # Per-token tracing
+    capture_per_token_timings=True,
+    per_token_timing_max_tokens=None,
+    trace_stride=32,
+    include_final_token_in_trace=True,
 )
 
 
