@@ -43,3 +43,9 @@ llama-server \
   --jinja \
   --host 0.0.0.0 --port 8888
 ```
+
+## helpful commands
+
+```sh
+export PYTHONPATH="$PWD:$PYTHONPATH"
+```

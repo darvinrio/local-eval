@@ -18,19 +18,20 @@ from models.config import MLXContextConfig
 
 CONFIG = MLXContextConfig(
     # Model
-    model_name="mlx-community/Qwen3.5-9B-MLX-4bit",
+    model_name="Jiunsong/supergemma4-26b-uncensored-mlx-4bit-v2",
     seed=42,
     # Context sweep
     context_sizes=[512, 1024, 2048, 4096, 8192, 16384, 32768],
     # Tasks — must be keys registered in TASK_REGISTRY
-    active_tasks=["bug_detection", "classifier", "dbt_model"],
+    # active_tasks=["bug_detection", "classifier", "dbt_model"],
+    active_tasks=["bug_detection"],
     # Generation
     max_tokens=256,
     # Run control
     warmup_runs=1,
     num_runs=3,
     # Memory safety
-    memory_safety_threshold=0.85,  # fraction of available RAM
+    memory_safety_threshold=0.95,  # fraction of available RAM
     force_run=False,  # True → interactive override prompt
     generation_headroom_gb=1.0,  # buffer on top of weight + KV estimate
     # Output
