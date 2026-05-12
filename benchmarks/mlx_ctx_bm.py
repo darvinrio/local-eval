@@ -312,7 +312,7 @@ def run_ctx_sweep(
                         tokenizer,
                         messages,
                         config.max_tokens,
-                        config=config,
+                        config=None,
                     )
 
                 # Measure
