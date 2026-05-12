@@ -65,6 +65,7 @@ def _memory_preflight(
     force_run: bool,
     safety_threshold: float,
     generation_headroom_gb: float,
+    pre_load_available_gb: float,
 ) -> tuple[bool, str]:
     """
     Preflight memory usage for the task.
@@ -76,6 +77,8 @@ def _memory_preflight(
         force_run: Force run despite memory warnings.
         safety_threshold: Safety threshold for memory usage.
         generation_headroom_gb: Headroom for generation.
+        pre_load_available_gb: Available system memory captured *before* model
+            load.
 
     Returns:
         tuple[bool, str]: Whether memory preflight passed and reason.
@@ -96,16 +99,19 @@ def _memory_preflight(
 
     model_weights_gb = mx.metal.get_active_memory() / 1e9
     required_gb = model_weights_gb + kv_cache_gb + generation_headroom_gb
-    available_gb = psutil.virtual_memory().available / 1e9
 
-    if required_gb > available_gb * safety_threshold:
-        reason = f"Required memory ({required_gb:.1f} GB) exceeds threshold of available ({available_gb:.1f} GB)"  # noqa: E501
+    if required_gb > pre_load_available_gb * safety_threshold:
+        reason = (
+            f"Required memory ({required_gb:.1f} GB) exceeds threshold of "
+            f"pre-load available ({pre_load_available_gb:.1f} GB)"
+        )
         if not force_run:
             logger.warning(f"Skipping {task.task_id} at {context_tokens}: {reason}")
             return False, reason
         else:
             ans = input(
-                f"⚠  {context_tokens} tokens may use {required_gb:.1f} GB (available: {available_gb:.1f} GB). Proceed? [y/N]: "  # noqa: E501
+                f"⚠  {context_tokens} tokens may use {required_gb:.1f} GB "
+                f"(pre-load available: {pre_load_available_gb:.1f} GB). Proceed? [y/N]: "
             )
             if ans.lower() != "y":
                 return False, reason
@@ -180,6 +186,9 @@ def run_ctx_sweep(
     model_name = config.model_name
     mx.random.seed(config.seed)
 
+    pre_load_available_gb = psutil.virtual_memory().available / 1e9
+    logger.info(f"Pre-load available memory: {pre_load_available_gb:.2f} GB")
+
     logger.info(f"Loading model {model_name}...")
     load_result = cast(
         tuple[nn.Module, TokenizerWrapper, dict[str, Any]],
@@ -203,6 +212,7 @@ def run_ctx_sweep(
                     config.force_run,
                     config.memory_safety_threshold,
                     config.generation_headroom_gb,
+                    pre_load_available_gb,
                 )
 
                 if not safe:
