@@ -16,12 +16,19 @@ from mlx_lm.tokenizer_utils import TokenizerWrapper
 
 from benchmarks.tasks.base import ContextTask
 from models.config import MLXContextConfig
-from models.results import ContextScaleResult, ContextScaleSweepResult
+from models.results import (
+    ContextScaleResult,
+    ContextScaleRunResult,
+    ContextScaleSweepResult,
+    TokenTiming,
+)
 from utils.basic import unload
 
 
 def _build_context(
-    task: ContextTask, target_tokens: int, tokenizer: TokenizerWrapper
+    task: ContextTask,
+    target_tokens: int,
+    tokenizer: TokenizerWrapper,
 ) -> tuple[list[dict[str, str]], int]:
     """
     Build context for the task.
@@ -110,7 +117,7 @@ def _memory_preflight(
             return False, reason
         else:
             ans = input(
-                f"⚠  {context_tokens} tokens may use {required_gb:.1f} GB "
+                f"\u26a0  {context_tokens} tokens may use {required_gb:.1f} GB "
                 f"(pre-load available: {pre_load_available_gb:.1f} GB). Proceed? [y/N]:"
             )
             if ans.lower() != "y":
@@ -124,54 +131,106 @@ def _single_run(
     tokenizer: TokenizerWrapper,
     messages: list[dict[str, str]],
     max_tokens: int,
-) -> tuple[float, float, float, float, float, int]:
+    prompt_tokens: int,
+    config: MLXContextConfig,
+    run_index: int,
+) -> ContextScaleRunResult:
     """
-    Run a single inference run.
+    Run a single inference run and collect per-token timings.
 
     Args:
         model: Model to run inference on.
         tokenizer: Tokenizer to use.
         messages: Messages to send to the model.
         max_tokens: Maximum number of tokens to generate.
+        prompt_tokens: Number of tokens in the pre-filled prompt.
+        config: Benchmark configuration (controls trace capture).
+        run_index: 1-based index of this measured run.
 
     Returns:
-        tuple[float, float, float, float, float, int]: Metrics for the run.
+        ContextScaleRunResult: Structured result with aggregate and per-token data.
     """
+    # --- Tokenize ---
     t0 = time.perf_counter()
     tokenized_prompt = tokenizer.apply_chat_template(
         messages, add_generation_prompt=True, tokenize=True
     )
     tokenizer_time_ms = (time.perf_counter() - t0) * 1000
 
+    # --- Generation ---
     gen = stream_generate(
         model, tokenizer=tokenizer, prompt=tokenized_prompt, max_tokens=max_tokens
     )
 
     t_start = time.perf_counter()
-    t_first_token = None
+    t_first_token: float | None = None
+    prev_time = t_start  # used for delta_ms
+
+    # Trace capture control
+    capture = config.capture_per_token_timings
+    max_stored = config.per_token_timing_max_tokens or max_tokens
+    stride = config.trace_stride
+    include_final = config.include_final_token_in_trace
+
+    per_token_timings: list[TokenTiming] = []
+    stored_count = 0
 
     response = None
     for response in gen:
+        now = time.perf_counter()
+
         if t_first_token is None:
-            t_first_token = time.perf_counter()
+            t_first_token = now
+            since_first_ms = 0.0
+        else:
+            since_first_ms = (now - t_first_token) * 1000.0
+
+        token_index = response.generation_tokens  # 1-based count of generated tokens
+        delta_ms = (now - prev_time) * 1000.0
+        since_start_ms = (now - t_start) * 1000.0
+        seq_len = prompt_tokens + token_index
+
+        prev_time = now
+
+        # Decide whether to store this token's timing
+        if capture and stored_count < max_stored:
+            # stride logic: store tokens whose (token_index - 1) % stride == 0
+            should_store = ((token_index - 1) % stride == 0) or (
+                include_final and token_index == max_tokens
+            )
+            # Always include final token if we haven't stored it yet
+            if should_store or token_index == max_tokens:
+                token_timing = TokenTiming(
+                    token_index=token_index,
+                    delta_ms=delta_ms,
+                    since_start_ms=since_start_ms,
+                    since_first_token_ms=since_first_ms,
+                    sequence_length=seq_len,
+                )
+                per_token_timings.append(token_timing)
+                stored_count += 1
 
     if response is None or t_first_token is None:
         raise RuntimeError("No tokens generated")
 
-    ttft_ms = (t_first_token - t_start) * 1000
+    ttft_ms = (t_first_token - t_start) * 1000.0
 
-    return (
-        tokenizer_time_ms,
-        ttft_ms,
-        response.prompt_tps,
-        response.generation_tps,
-        response.peak_memory,
-        response.generation_tokens,
+    return ContextScaleRunResult(
+        run_index=run_index,
+        tokenizer_time_ms=tokenizer_time_ms,
+        ttft_ms=ttft_ms,
+        prompt_tps=response.prompt_tps,
+        generation_tps=response.generation_tps,
+        peak_memory_gb=response.peak_memory,
+        generation_tokens=response.generation_tokens,
+        prompt_tokens=prompt_tokens,
+        per_token_timings=per_token_timings,
     )
 
 
 def run_ctx_sweep(
-    config: MLXContextConfig, tasks: list[ContextTask]
+    config: MLXContextConfig,
+    tasks: list[ContextTask],
 ) -> ContextScaleSweepResult:
     """
     Run context scale benchmark.
@@ -233,25 +292,40 @@ def run_ctx_sweep(
                     )
                     continue
 
-                # Warmup
+                # Warmup (warmup runs do not store per-token traces in output)
                 for _ in range(config.warmup_runs):
-                    _single_run(model, tokenizer, messages, config.max_tokens)
-
-                # Measure
-                metrics = []
-                num_runs = config.num_runs
-                for _ in range(num_runs):
-                    metrics.append(
-                        _single_run(model, tokenizer, messages, config.max_tokens)
+                    _single_run(
+                        model,
+                        tokenizer,
+                        messages,
+                        config.max_tokens,
+                        actual_tokens,
+                        config,
+                        run_index=0,  # warmup; not stored
                     )
 
-                # Aggregate
-                avg_tok_time = sum(m[0] for m in metrics) / num_runs
-                avg_ttft = sum(m[1] for m in metrics) / num_runs
-                avg_ptps = sum(m[2] for m in metrics) / num_runs
-                avg_gtps = sum(m[3] for m in metrics) / num_runs
-                avg_peak_mem = sum(m[4] for m in metrics) / num_runs
-                gen_tokens = metrics[-1][5]
+                # Measure
+                run_results: list[ContextScaleRunResult] = []
+                num_runs = config.num_runs
+                for i in range(num_runs):
+                    run_result = _single_run(
+                        model,
+                        tokenizer,
+                        messages,
+                        config.max_tokens,
+                        actual_tokens,
+                        config,
+                        run_index=i + 1,
+                    )
+                    run_results.append(run_result)
+
+                # Aggregate top-level averages from measured runs
+                avg_tok_time = sum(r.tokenizer_time_ms for r in run_results) / num_runs
+                avg_ttft = sum(r.ttft_ms for r in run_results) / num_runs
+                avg_ptps = sum(r.prompt_tps for r in run_results) / num_runs
+                avg_gtps = sum(r.generation_tps for r in run_results) / num_runs
+                avg_peak_mem = sum(r.peak_memory_gb for r in run_results) / num_runs
+                gen_tokens = run_results[-1].generation_tokens
 
                 res = ContextScaleResult(
                     task_id=task.task_id,
@@ -263,6 +337,7 @@ def run_ctx_sweep(
                     generation_tps=avg_gtps,
                     peak_memory_gb=avg_peak_mem,
                     generation_tokens=gen_tokens,
+                    runs=run_results,
                 )
                 results.append(res)
 
