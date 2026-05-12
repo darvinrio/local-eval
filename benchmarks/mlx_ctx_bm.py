@@ -111,7 +111,7 @@ def _memory_preflight(
         else:
             ans = input(
                 f"⚠  {context_tokens} tokens may use {required_gb:.1f} GB "
-                f"(pre-load available: {pre_load_available_gb:.1f} GB). Proceed? [y/N]: "
+                f"(pre-load available: {pre_load_available_gb:.1f} GB). Proceed? [y/N]:"
             )
             if ans.lower() != "y":
                 return False, reason
@@ -191,7 +191,7 @@ def run_ctx_sweep(
 
     logger.info(f"Loading model {model_name}...")
     load_result = cast(
-        tuple[nn.Module, TokenizerWrapper, dict[str, Any]],
+        "tuple[nn.Module, TokenizerWrapper, dict[str, Any]]",
         load(model_name, return_config=True),
     )
     model, tokenizer, model_config = load_result

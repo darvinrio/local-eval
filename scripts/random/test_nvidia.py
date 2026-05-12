@@ -20,7 +20,7 @@ _RESET_COLOR = "\033[0m" if _USE_COLOR else ""
 # NVIDIA_API_KEY = os.getenv("NVIDIA_API_KEY")
 ZHYPRA_API_KEY = os.getenv("ZHYPRA_API_KEY")
 
-# client = OpenAI(base_url="https://integrate.api.nvidia.com/v1", api_key=NVIDIA_API_KEY)
+# client = OpenAI(base_url="https://integrate.api.nvidia.com/v1", api_key=NVIDIA_API_KEY) # noqa: E501
 client = OpenAI(base_url="https://api.zyphracloud.com/api/v1", api_key=ZHYPRA_API_KEY)
 
 

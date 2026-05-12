@@ -4,15 +4,17 @@ scripts/random/prep_large_context.py
 Simple script to test the context building.
 """
 
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 
 import mlx.core as mx
 import mlx.nn as nn
 from mlx_lm import load
-from mlx_lm.tokenizer_utils import TokenizerWrapper
 
 from benchmarks.mlx_ctx_bm import _build_context
 from benchmarks.tasks import TASK_REGISTRY
+
+if TYPE_CHECKING:
+    from mlx_lm.tokenizer_utils import TokenizerWrapper
 
 MODEL_NAME = "mlx-community/Qwen3.5-9B-MLX-4bit"
 SEED = 42
@@ -23,7 +25,7 @@ model_name = MODEL_NAME
 mx.random.seed(SEED)
 
 load_result = cast(
-    tuple[nn.Module, TokenizerWrapper, dict[str, Any]],
+    "tuple[nn.Module, TokenizerWrapper, dict[str, Any]]",
     load(model_name, return_config=True),
 )
 model, tokenizer, model_config = load_result

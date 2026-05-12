@@ -4,10 +4,10 @@ mlx_bench.py — Unified MLX-LM benchmark + eval script
 Runs: throughput (tok/sec, memory), perplexity, and lm-eval accuracy tasks
 for one or more models.
 """
-import json
-from benchmarks.mlx_bm import run_mlx_bm
-from benchmarks.mlx_eval import run_mlx_eval
 
+import json
+
+from benchmarks.mlx_eval import run_mlx_eval
 
 # if __name__ == "__main__":
 #     MODEL_NAME = "mlx-community/Qwen3.5-9B-MLX-4bit"

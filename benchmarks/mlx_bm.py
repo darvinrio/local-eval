@@ -4,17 +4,18 @@ benchmarks/mlx_bm.py
 MLX benchmark runner.
 """
 
-from typing import cast, Any
+from typing import TYPE_CHECKING, Any, cast
 
-import time
-import mlx.nn as nn
 import mlx.core as mx
+import mlx.nn as nn
 from loguru import logger
-from mlx_lm import stream_generate, load
-from mlx_lm.tokenizer_utils import TokenizerWrapper
+from mlx_lm import load, stream_generate
 
 from models.results import BenchmarkResult
 from utils.basic import unload
+
+if TYPE_CHECKING:
+    from mlx_lm.tokenizer_utils import TokenizerWrapper
 
 
 def run_mlx_bm(
@@ -24,10 +25,23 @@ def run_mlx_bm(
     temp: float = 0.6,
     seed: int = 42,
 ) -> BenchmarkResult:
+    """
+    Run MLX benchmark.
+
+    Args:
+        model_name: Model name to run.
+        prompt: Prompt to use.
+        max_tokens: Maximum number of tokens to generate.
+        temp: Temperature for sampling.
+        seed: Random seed.
+
+    Returns:
+        BenchmarkResult: Result of the benchmark.
+    """
     mx.random.seed(seed)
 
     load_result = cast(
-        tuple[nn.Module, TokenizerWrapper, dict[str, Any]],  # workaround for typing
+        "tuple[nn.Module, TokenizerWrapper, dict[str, Any]]",  # workaround for typing
         load(model_name, return_config=True),
     )
     model, tokenizer, config = load_result

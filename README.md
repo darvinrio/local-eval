@@ -46,7 +46,21 @@ llama-server \
 
 ## helpful commands
 
+### python
+
 ```sh
+# check ruff issues
+ruff check
+# fix ruff issues
+ruff check --fix  
+# format ruff
+ruff format 
+# check types
+ty check
+```
+
+```sh
+# add repo to python path
 export PYTHONPATH="$PWD:$PYTHONPATH"
 ```
 

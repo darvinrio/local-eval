@@ -1,14 +1,31 @@
-from mlx_lm.evaluate import MLXLM, chat_template_fn
-from models.results import EvalResult
+"""
+mlx_eval.py
+
+MLX evaluation benchmark
+"""
+
 import lm_eval
-from loguru import logger
 import mlx.core as mx
+from loguru import logger
+
+from models.results import EvalResult
 
 
 def run_mlx_eval(
     model_name: str, max_tokens: int = 1024, temp: float = 0.6, seed: int = 42
 ) -> list[EvalResult]:
+    """
+    Run MLXEval benchmark.
 
+    Args:
+        model_name: Model name to run.
+        max_tokens: Maximum number of tokens to generate.
+        temp: Temperature for sampling.
+        seed: Random seed.
+
+    Returns:
+        list[EvalResult]: List of evaluation results.
+    """
     mx.random.seed(seed)
 
     # lm = MLXLM(
