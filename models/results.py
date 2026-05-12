@@ -49,6 +49,30 @@ class ModelResult(msgspec.Struct):
     errors: list[str] = []
 
 
+class TokenTiming(msgspec.Struct):
+    """Per-token timing from an individual benchmark run."""
+
+    token_index: int  # 1-based generated token position
+    delta_ms: float  # wall-clock time since previous yielded token
+    since_start_ms: float  # wall-clock time since decode start
+    since_first_token_ms: float  # wall-clock time since first yielded token
+    sequence_length: int  # prompt_tokens + token_index
+
+
+class ContextScaleRunResult(msgspec.Struct):
+    """Raw metrics for a single measured benchmark run."""
+
+    run_index: int
+    tokenizer_time_ms: float
+    ttft_ms: float
+    prompt_tps: float
+    generation_tps: float
+    peak_memory_gb: float
+    generation_tokens: int
+    prompt_tokens: int
+    per_token_timings: list[TokenTiming] = []
+
+
 class ContextScaleResult(msgspec.Struct):
     """ContextScaleResult"""
 
@@ -63,6 +87,7 @@ class ContextScaleResult(msgspec.Struct):
     generation_tokens: int
     skipped: bool = False
     skip_reason: str = ""
+    runs: list[ContextScaleRunResult] = []
 
 
 class ContextScaleSweepResult(msgspec.Struct):
