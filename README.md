@@ -2,7 +2,7 @@
 
 Evaluating local models
 
-## models 
+## models
 
 * `unsloth/gemma-4-26B-A4B-it`
 * `unsloth/gemma-4-E4B-it`
@@ -57,6 +57,8 @@ ruff check --fix
 ruff format 
 # check types
 ty check
+# run all checks
+pre-commit run --all-files
 ```
 
 ```sh
