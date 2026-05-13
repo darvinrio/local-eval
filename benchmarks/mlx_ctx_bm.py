@@ -4,6 +4,7 @@ benchmarks/mlx_ctx_bm.py
 Context scaling benchmark runner.
 """
 
+import gc
 import time
 from typing import Any, cast
 
@@ -63,6 +64,29 @@ def _build_context(
     return messages, len(final_tokens)
 
 
+def _resolve_text_config(config: dict[str, Any]) -> dict[str, Any]:
+    """
+    Extract the text model config from a potentially nested model config.
+
+    Multimodal models (Gemma4ForConditionalGeneration,
+    Qwen3_5MoeForConditionalGeneration, etc.) nest architecture params
+    under 'text_config' or 'language_config'. Text-only models have them
+    at the root level.
+
+    Args:
+        config: Raw config dict from mlx_lm.load(..., return_config=True).
+
+    Returns:
+        The sub-dict containing num_hidden_layers, num_key_value_heads, etc.
+    """
+    for sub_key in ("text_config", "language_config", "llm_config"):
+        if sub_key in config and isinstance(config[sub_key], dict):
+            sub = config[sub_key]
+            if "num_hidden_layers" in sub or "num_layers" in sub:
+                return sub
+    return config
+
+
 def _memory_preflight(
     task: ContextTask,
     context_tokens: int,
@@ -89,10 +113,21 @@ def _memory_preflight(
         tuple[bool, str]: Whether memory preflight passed and reason.
     """
     num_layers = config.get("num_hidden_layers", config.get("num_layers", 0))
-    num_kv_heads = config.get("num_key_value_heads", config.get("num_kv_heads", 0))
-    head_dim = config.get(
-        "head_dim", config.get("hidden_size", 0) // config.get("num_attention_heads", 1)
+
+    head_dim = max(
+        config.get("head_dim", 0),
+        config.get("global_head_dim", 0),
+        config.get("linear_key_head_dim", 0),
+        config.get("linear_value_head_dim", 0),
     )
+
+    num_kv_heads = max(
+        config.get("num_key_value_heads", 0),
+        config.get("num_global_key_value_heads", 0),
+        config.get("linear_num_key_heads", 0),
+        config.get("linear_num_value_heads", 0),
+    )
+
     if head_dim == 0 and "hidden_size" in config and "num_attention_heads" in config:
         head_dim = config["hidden_size"] // config["num_attention_heads"]
 
@@ -102,8 +137,29 @@ def _memory_preflight(
         context_tokens * num_layers * num_kv_heads * head_dim * 2 * dtype_bytes
     ) / 1e9
 
+    if kv_cache_gb == 0 and context_tokens > 0:
+        logger.warning(
+            f"KV cache estimate is 0 GB for {context_tokens} tokens. "
+            f"Config may be missing expected keys: {list(config.keys())}. "
+            f"Falling back to heuristic: 0.5 bytes/token/layer."
+        )
+        num_layers_fallback = config.get(
+            "num_hidden_layers", config.get("num_layers", 32)
+        )
+        # Heuristic: ~0.5 bytes per token per layer is a rough lower bound
+        # for GQA models with small KV heads
+        kv_cache_gb = (context_tokens * num_layers_fallback * 0.5) / 1e9
+
     model_weights_gb = mx.get_active_memory() / 1e9
     required_gb = model_weights_gb + kv_cache_gb + generation_headroom_gb
+
+    logger.debug(
+        f"Preflight: layers={num_layers} kv_heads={num_kv_heads} "
+        f"head_dim={head_dim} → kv_cache={kv_cache_gb:.2f} GB, "
+        f"model_weights={model_weights_gb:.2f} GB, "
+        f"required={required_gb:.2f} GB vs "
+        f"available={pre_load_available_gb:.2f} GB × {safety_threshold}"
+    )
 
     if required_gb > pre_load_available_gb * safety_threshold:
         reason = (
@@ -268,31 +324,122 @@ def run_ctx_sweep(
     )
     model, tokenizer, model_config = load_result
 
+    text_config = _resolve_text_config(model_config)
+
     results: list[ContextScaleResult] = []
 
     try:
         for task in tasks:
+            consecutive_errors = 0
             for context_size in config.context_sizes:
-                logger.info(f"Preparing task {task.task_id} at size {context_size}")
+                if consecutive_errors >= 3:
+                    logger.warning(
+                        f"Task {task.task_id} hit 3 consecutive errors, "
+                        f"bailing out of remaining context sizes."
+                    )
+                    break
 
-                messages, actual_tokens = _build_context(task, context_size, tokenizer)
+                actual_tokens = 0
+                try:
+                    logger.info(f"Preparing task {task.task_id} at size {context_size}")
 
-                safe, reason = _memory_preflight(
-                    task,
-                    actual_tokens,
-                    model_config,
-                    config.force_run,
-                    config.memory_safety_threshold,
-                    config.generation_headroom_gb,
-                    pre_load_available_gb,
-                )
+                    messages, actual_tokens = _build_context(
+                        task, context_size, tokenizer
+                    )
 
-                if not safe:
+                    safe, reason = _memory_preflight(
+                        task,
+                        actual_tokens,
+                        text_config,
+                        config.force_run,
+                        config.memory_safety_threshold,
+                        config.generation_headroom_gb,
+                        pre_load_available_gb,
+                    )
+
+                    if not safe:
+                        results.append(
+                            ContextScaleResult(
+                                task_id=task.task_id,
+                                target_context_tokens=context_size,
+                                actual_context_tokens=0,
+                                tokenizer_time_ms=0,
+                                ttft_ms=0,
+                                prompt_tps=0,
+                                generation_tps=0,
+                                peak_memory_gb=0,
+                                generation_tokens=0,
+                                skipped=True,
+                                skip_reason=reason,
+                            )
+                        )
+                        continue
+
+                    # Warmup
+                    for _ in range(config.warmup_runs):
+                        _single_run(
+                            model,
+                            tokenizer,
+                            messages,
+                            config.max_tokens,
+                            config=None,
+                        )
+
+                    # Measure
+                    measured_runs: list[ContextScaleRunResult] = []
+                    num_runs = config.num_runs
+                    for i in range(num_runs):
+                        measured_runs.append(
+                            _single_run(
+                                model,
+                                tokenizer,
+                                messages,
+                                config.max_tokens,
+                                run_index=i + 1,
+                                config=config,
+                            )
+                        )
+
+                    # Aggregate
+                    avg_tok_time = (
+                        sum(r.tokenizer_time_ms for r in measured_runs) / num_runs
+                    )
+                    avg_ttft = sum(r.ttft_ms for r in measured_runs) / num_runs
+                    avg_ptps = sum(r.prompt_tps for r in measured_runs) / num_runs
+                    avg_gtps = sum(r.generation_tps for r in measured_runs) / num_runs
+                    avg_peak_mem = (
+                        sum(r.peak_memory_gb for r in measured_runs) / num_runs
+                    )
+                    # Use generation tokens from the last run
+                    gen_tokens = measured_runs[-1].generation_tokens
+
+                    res = ContextScaleResult(
+                        task_id=task.task_id,
+                        target_context_tokens=context_size,
+                        actual_context_tokens=actual_tokens,
+                        tokenizer_time_ms=avg_tok_time,
+                        ttft_ms=avg_ttft,
+                        prompt_tps=avg_ptps,
+                        generation_tps=avg_gtps,
+                        peak_memory_gb=avg_peak_mem,
+                        generation_tokens=gen_tokens,
+                        runs=measured_runs,
+                    )
+                    results.append(res)
+
+                    logger.success(
+                        f"Task {task.task_id} @ {context_size} done. "
+                        f"TTFT: {avg_ttft:.1f}ms"
+                    )
+                    consecutive_errors = 0  # reset on success
+
+                except Exception as exc:
+                    logger.error(f"Task {task.task_id} @ {context_size} FAILED: {exc}")
                     results.append(
                         ContextScaleResult(
                             task_id=task.task_id,
                             target_context_tokens=context_size,
-                            actual_context_tokens=0,
+                            actual_context_tokens=actual_tokens,
                             tokenizer_time_ms=0,
                             ttft_ms=0,
                             prompt_tps=0,
@@ -300,64 +447,14 @@ def run_ctx_sweep(
                             peak_memory_gb=0,
                             generation_tokens=0,
                             skipped=True,
-                            skip_reason=reason,
+                            skip_reason=f"error: {exc}",
                         )
                     )
+                    # Clear GPU caches to attempt recovery for subsequent sizes
+                    mx.clear_cache()
+                    gc.collect()
+                    consecutive_errors += 1
                     continue
-
-                # Warmup
-                for _ in range(config.warmup_runs):
-                    _single_run(
-                        model,
-                        tokenizer,
-                        messages,
-                        config.max_tokens,
-                        config=None,
-                    )
-
-                # Measure
-                measured_runs: list[ContextScaleRunResult] = []
-                num_runs = config.num_runs
-                for i in range(num_runs):
-                    measured_runs.append(
-                        _single_run(
-                            model,
-                            tokenizer,
-                            messages,
-                            config.max_tokens,
-                            run_index=i + 1,
-                            config=config,
-                        )
-                    )
-
-                # Aggregate
-                avg_tok_time = (
-                    sum(r.tokenizer_time_ms for r in measured_runs) / num_runs
-                )
-                avg_ttft = sum(r.ttft_ms for r in measured_runs) / num_runs
-                avg_ptps = sum(r.prompt_tps for r in measured_runs) / num_runs
-                avg_gtps = sum(r.generation_tps for r in measured_runs) / num_runs
-                avg_peak_mem = sum(r.peak_memory_gb for r in measured_runs) / num_runs
-                # Use generation tokens from the last run
-                gen_tokens = measured_runs[-1].generation_tokens
-
-                res = ContextScaleResult(
-                    task_id=task.task_id,
-                    target_context_tokens=context_size,
-                    actual_context_tokens=actual_tokens,
-                    tokenizer_time_ms=avg_tok_time,
-                    ttft_ms=avg_ttft,
-                    prompt_tps=avg_ptps,
-                    generation_tps=avg_gtps,
-                    peak_memory_gb=avg_peak_mem,
-                    generation_tokens=gen_tokens,
-                    runs=measured_runs,
-                )
-                results.append(res)
-
-                logger.success(
-                    f"Task {task.task_id} @ {context_size} done. TTFT: {avg_ttft:.1f}ms"
-                )
     finally:
         unload(model=model, tokenizer=tokenizer)
 

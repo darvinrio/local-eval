@@ -21,12 +21,12 @@ CONFIG = MLXContextConfig(
     model_name="Jiunsong/supergemma4-26b-uncensored-mlx-4bit-v2",
     seed=42,
     # Context sweep
-    context_sizes=[512, 1024, 2048, 4096, 8192, 16384, 32768],
+    context_sizes=[4096, 16384, 32768, 65536, 131072],
     # Tasks — must be keys registered in TASK_REGISTRY
     # active_tasks=["bug_detection", "classifier", "dbt_model"],
     active_tasks=["bug_detection"],
     # Generation
-    max_tokens=256,
+    max_tokens=4096,
     # Run control
     warmup_runs=1,
     num_runs=3,
@@ -65,6 +65,10 @@ def emit_rich_table(results_data: list[Any]) -> None:
 
     for res in results_data:
         if res.skipped:
+            if res.skip_reason.startswith("error:"):
+                status_str = "[red]ERR[/red]"
+            else:
+                status_str = "[yellow]SKIP[/yellow]"
             table.add_row(
                 res.task_id,
                 str(res.target_context_tokens),
@@ -73,7 +77,7 @@ def emit_rich_table(results_data: list[Any]) -> None:
                 "—",
                 "—",
                 "—",
-                "[yellow]SKIP[/yellow]",
+                status_str,
             )
         else:
             table.add_row(
