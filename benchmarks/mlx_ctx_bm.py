@@ -102,7 +102,7 @@ def _memory_preflight(
         context_tokens * num_layers * num_kv_heads * head_dim * 2 * dtype_bytes
     ) / 1e9
 
-    model_weights_gb = mx.metal.get_active_memory() / 1e9
+    model_weights_gb = mx.get_active_memory() / 1e9
     required_gb = model_weights_gb + kv_cache_gb + generation_headroom_gb
 
     if required_gb > pre_load_available_gb * safety_threshold:

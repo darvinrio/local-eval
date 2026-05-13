@@ -15,4 +15,4 @@ def unload(model: nn.Module, tokenizer: TokenizerWrapper) -> None:
     """Free model memory before loading the next one."""
     del model, tokenizer
     gc.collect()
-    mx.metal.clear_cache()
+    mx.clear_cache()
