@@ -4,11 +4,10 @@ utils/kv_cache/models.py
 Models for KV cache estimation.
 """
 
-from dataclasses import dataclass
+import msgspec
 
 
-@dataclass(frozen=True)
-class LayerKVCacheInfo:
+class LayerKVCacheInfo(msgspec.Struct):
     """KV cache cost for one group of same-type layers.
 
     Layers fall into two categories:
@@ -28,8 +27,7 @@ class LayerKVCacheInfo:
     )
 
 
-@dataclass
-class KVCacheEstimate:
+class KVCacheEstimate(msgspec.Struct):
     """Full-model KV cache estimate with per-layer-type breakdown."""
 
     model_type: str
