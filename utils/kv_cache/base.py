@@ -1,6 +1,14 @@
+"""
+utils/kv_cache/base.py
+
+Base class for model-family-specific KV cache estimators.
+"""
+
 from abc import ABC, abstractmethod
 from typing import Any
+
 from utils.kv_cache.models import KVCacheEstimate
+
 
 class KVCacheAdapter(ABC):
     """Base class for model-family-specific KV cache estimators."""

@@ -1,4 +1,11 @@
+"""
+utils/kv_cache/models.py
+
+Models for KV cache estimation.
+"""
+
 from dataclasses import dataclass
+
 
 @dataclass(frozen=True)
 class LayerKVCacheInfo:
@@ -11,17 +18,22 @@ class LayerKVCacheInfo:
       Maintain a fixed-size state matrix O(1) w.r.t. sequence length.
       Cost = fixed_state_bytes_per_layer (constant, independent of S).
     """
-    layer_type: str                        # "sliding_attention", "full_attention", "linear_attention", "gqa"
+
+    layer_type: str  # "sliding_attention", "full_attention", "linear_attention", "gqa"
     num_layers: int
-    bytes_per_token_per_layer: int         # O(S) cost; 0 for fixed-state layers
-    max_cache_tokens: int | None = None    # None = unbounded; else sliding-window cap
-    fixed_state_bytes_per_layer: int = 0   # O(1) cost for linear attention layers; 0 for standard attention
+    bytes_per_token_per_layer: int  # O(S) cost; 0 for fixed-state layers
+    max_cache_tokens: int | None = None  # None = unbounded; else sliding-window cap
+    fixed_state_bytes_per_layer: int = (
+        0  # O(1) cost for linear attention layers; 0 for standard attention
+    )
+
 
 @dataclass
 class KVCacheEstimate:
     """Full-model KV cache estimate with per-layer-type breakdown."""
+
     model_type: str
-    kv_quant_bits: int               # effective bits used (16, 8, 4)
+    kv_quant_bits: int  # effective bits used (16, 8, 4)
     layer_breakdowns: list[LayerKVCacheInfo]
 
     @property
@@ -66,4 +78,4 @@ class KVCacheEstimate:
 
     def estimate_gb(self, context_tokens: int) -> float:
         """Convenience: estimate in GiB."""
-        return self.estimate_bytes(context_tokens) / (1024 ** 3)
+        return self.estimate_bytes(context_tokens) / (1024**3)

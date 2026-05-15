@@ -1,4 +1,9 @@
-from utils.kv_cache.adapters import get_adapter, Gemma4Adapter, Qwen36HybridAdapter
+"""
+scripts/test_kv_cache.py
+
+Test the KV cache estimation functionality.
+"""
+
 from utils.kv_cache import estimate_kv_cache
 
 print("Testing Gemma4 26B-A4B...")
