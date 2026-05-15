@@ -13,6 +13,9 @@ gemma4_config = {
     "layer_types": ["full_attention"] * 5 + ["sliding_attention"] * 25,
     "num_key_value_heads": 8,
     "head_dim": 256,
+    "attention_k_eq_v": True,
+    "num_global_key_value_heads": 2,
+    "global_head_dim": 512,
     "sliding_window": 1024,
 }
 estimate = estimate_kv_cache(gemma4_config, kv_quant_bits=16)

@@ -29,7 +29,9 @@ Memory caps at window size W.
 
 ### Hybrid Interleaved (Full + SWA) — Gemma 4 Pattern
 
-    KV_hybrid = 2 × B × [ Σ_full(H_kv × D × S) + Σ_SWA(H_kv × D × min(S,W)) ]
+Gemma 4 has `attention_k_eq_v = True` for its **global/full** layers, meaning K and V share the same tensor (1× not 2×). The global layers also use separate head parameters (`num_global_key_value_heads`, `global_head_dim`).
+
+    KV_hybrid = B × [ Σ_full(1 × H_global_kv × D_global × S) + Σ_SWA(2 × H_kv × D × min(S,W)) ]
 
 At S » W: growth rate = (L_full / L) × full-attention-rate.
 
@@ -39,7 +41,7 @@ Qwen 3.6 uses **Gated DeltaNet** layers (linear attention, RNN-like) interleaved
 
 **Linear attention layers** do NOT use a KV-cache in the traditional sense. Instead they maintain a **fixed-size state matrix** per layer:
 
-    State = linear_key_head_dim × linear_value_head_dim × B per layer
+    State = (H_QK_linear × D_QK_linear + H_V_linear × D_V_linear) × B per layer
 
 This is O(1) with respect to sequence length. The state matrix is updated incrementally for each new token.
 
@@ -75,14 +77,14 @@ Savings vs MHA: factor of H_q / H_kv.
 
 ### Multi-Latent Attention (MLA) — DeepSeek-V3
 
-MLA compresses KV via low-rank projections:
+MLA compresses KV via low-rank projections into a single latent vector:
 
-    KV_MLA_per_layer_per_token = [kv_lora_rank × 2 + qk_rope_head_dim] × B
+    KV_MLA_per_layer_per_token = (kv_lora_rank + qk_rope_head_dim) × B
 
-Total: KV_MLA = L × S × [kv_lora_rank × 2 + qk_rope_head_dim] × B
+Total: KV_MLA = L × S × (kv_lora_rank + qk_rope_head_dim) × B
 
-DeepSeek-V3: kv_lora_rank=512, qk_rope_head_dim=64 → 1,088 dims/token/layer
-vs standard 2×H×D = 2×128×128 = 32,768 → **30× compression**
+DeepSeek-V3: kv_lora_rank=512, qk_rope_head_dim=64 → 576 dims/token/layer
+vs standard 2×H×D = 2×128×128 = 32,768 → **~57× compression**
 
 ### MoE (Mixture of Experts)
 
@@ -288,44 +290,46 @@ Note: Only 10 layers do standard KV-caching. This model has a remarkably small K
 ### Gemma 4-31B (Hybrid SWA + Global)
 
 Pattern: 5 SWA (W=1024) + 1 Full → 50 SWA + 10 Full
-Full layers: 10 × 2 × 16 × 256 × 2 = 163,840 bytes/token
-SWA layers: 50 × 2 × 16 × 256 × 2 × min(S, 1024) = 819,200 × min(S, 1024)
+Full/global layers use K=V unification (`attention_k_eq_v=True`) with separate head params:
+  Full layers: 10 × 1 × 4 × 512 × 2 = 40,960 bytes/token (K=V, global_kv_heads=4, global_head_dim=512)
+  SWA layers: 50 × 2 × 16 × 256 × 2 × min(S, 1024) = 819,200 × min(S, 1024) (standard K+V)
 
 | Context | Full layers contrib | SWA layers contrib | Total | GiB |
 |---------|--------------------:|-------------------:|------:|----:|
-| 4K (4,096) | 671,088,640 | 838,860,800 | 1.42 GB | 1.32 |
-| 16K (16,384) | 2,684,354,560 | 838,860,800 | 3.28 GB | 3.06 |
-| 64K (65,536) | 10,737,418,240 | 838,860,800 | 10.61 GB | 9.89 |
-| 128K (131,072) | 21,474,836,480 | 838,860,800 | 20.54 GB | 19.13 |
-| 256K (262,144) | 42,949,672,960 | 838,860,800 | 40.13 GB | 37.38 |
+| 4K (4,096) | 167,772,160 | 838,860,800 | 1,006,632,960 | 0.94 |
+| 16K (16,384) | 671,088,640 | 838,860,800 | 1,509,949,440 | 1.41 |
+| 64K (65,536) | 2,684,354,560 | 838,860,800 | 3,523,215,360 | 3.28 |
+| 128K (131,072) | 5,368,709,120 | 838,860,800 | 6,207,569,920 | 5.78 |
+| 256K (262,144) | 10,737,418,240 | 838,860,800 | 11,576,279,040 | 10.78 |
 
-Note: SWA layers are capped at W=1024. Growth driven entirely by 10 full-attention layers (1/6 of model). SWA adds fixed 838 MB regardless of S>1K.
+Note: SWA layers are capped at W=1024. Full/global layers use K=V unification and only 4 KV heads (vs 16 for SWA). SWA adds fixed ~839 MB regardless of S>1K.
 
 ### Gemma 4-26B-A4B (MoE, Hybrid SWA + Global)
 
 Pattern: 5 SWA (W=1024) + 1 Full → 25 SWA + 5 Full
-Full layers: 5 × 2 × 16 × 256 × 2 = 81,920 bytes/token
-SWA layers: 25 × 2 × 16 × 256 × 2 × min(S, 1024) = 409,600 × min(S, 1024)
+Full/global layers use K=V unification with separate head params:
+  Full layers: 5 × 1 × 2 × 512 × 2 = 10,240 bytes/token (K=V, global_kv_heads=2, global_head_dim=512)
+  SWA layers: 25 × 2 × 8 × 256 × 2 × min(S, 1024) = 204,800 × min(S, 1024) (H_kv=8, standard K+V)
 
 | Context | Full layers | SWA layers (capped) | Total | GiB |
 |---------|------------:|--------------------:|------:|----:|
-| 4K (4,096) | 335,544,320 | 419,430,400 | 715 MB | 0.67 |
-| 16K (16,384) | 1,342,177,280 | 419,430,400 | 1.65 GB | 1.53 |
-| 64K (65,536) | 5,368,709,120 | 419,430,400 | 5.39 GB | 5.02 |
-| 128K (131,072) | 10,737,418,240 | 419,430,400 | 10.37 GB | 9.66 |
-| 256K (262,144) | 21,474,836,480 | 419,430,400 | 20.54 GB | 19.13 |
+| 4K (4,096) | 41,943,040 | 209,715,200 | 251,658,240 | 0.23 |
+| 16K (16,384) | 167,772,160 | 209,715,200 | 377,487,360 | 0.35 |
+| 64K (65,536) | 671,088,640 | 209,715,200 | 880,803,840 | 0.82 |
+| 128K (131,072) | 1,342,177,280 | 209,715,200 | 1,551,892,480 | 1.45 |
+| 256K (262,144) | 2,684,354,560 | 209,715,200 | 2,894,069,760 | 2.70 |
 
 ### DeepSeek-V3 (MLA)
 
-KV_MLA = 61 × S × (512×2 + 64) × 2 = 61 × S × 2,176 = 132,736 × S
+KV_MLA = 61 × S × (512 + 64) × 2 = 61 × S × 1,152 = 70,272 × S
 
 | Context | KV Cache | GiB |
 |---------|---------:|----:|
-| 4K (4,096) | 543,686,656 | 0.51 |
-| 16K (16,384) | 2,174,746,624 | 2.02 |
-| 64K (65,536) | 8,698,986,496 | 8.10 |
-| 128K (131,072) | 17,397,972,992 | 16.20 |
-| 256K (262,144) | 34,795,945,984 | 32.40 |
+| 4K (4,096) | 287,834,112 | 0.27 |
+| 16K (16,384) | 1,151,336,448 | 1.07 |
+| 64K (65,536) | 4,605,345,792 | 4.29 |
+| 128K (131,072) | 9,210,691,584 | 8.58 |
+| 256K (262,144) | 18,421,383,168 | 17.15 |
 
 ### Qwen 3.5-32B (Dense, Full GQA)
 
@@ -345,11 +349,11 @@ Across 64 layers: 262,144 bytes/token
 
 | Rank | Model | Architecture | KV @ 128K | GiB |
 |------|-------|-------------|-----------|----:|
-| 1 | Qwen 3.6-35B-A3B | Linear attn (30 layers) + Full attn (10 layers), MoE | 20,480×S + fixed | 2.33 |
-| 2 | Qwen 3.6-27B | Linear attn (48 layers) + Full attn (16 layers), Dense | 65,536×S + fixed | 7.46 |
-| 3 | DeepSeek-V3 (671B!) | MLA compression | 132,736×S | 16.20 |
-| 4 | Gemma 4-26B-A4B | 25 SWA + 5 Full, MoE | 81,920×S + cap | 9.66 |
-| 5 | Gemma 4-31B | 50 SWA + 10 Full, Dense | 163,840×S + cap | 19.13 |
+| 1 | Gemma 4-26B-A4B | 25 SWA + 5 Full (K=V), MoE | 10,240×S + capped SWA | 1.45 |
+| 2 | Qwen 3.6-35B-A3B | Linear attn (30 layers) + Full attn (10 layers), MoE | 20,480×S + fixed | 2.33 |
+| 3 | Gemma 4-31B | 50 SWA + 10 Full (K=V), Dense | 40,960×S + capped SWA | 5.78 |
+| 4 | Qwen 3.6-27B | Linear attn (48 layers) + Full attn (16 layers), Dense | 65,536×S + fixed | 7.46 |
+| 5 | DeepSeek-V3 (671B!) | MLA compression | 70,272×S | 8.58 |
 | 6 | Qwen 3.5-32B | Full GQA, 64 layers | 262,144×S | 32.00 |
 
 ---
@@ -358,11 +362,11 @@ Across 64 layers: 262,144 bytes/token
 
 | Model | BF16 @ 128K | INT4 @ 128K | Savings |
 |-------|------------:|------------:|--------:|
+| Gemma 4-26B-A4B | 1.45 GiB | 0.36 GiB | 1.09 GiB |
 | Qwen 3.6-35B-A3B | 2.33 GiB | 0.58 GiB | 1.75 GiB |
+| Gemma 4-31B | 5.78 GiB | 1.45 GiB | 4.33 GiB |
 | Qwen 3.6-27B | 7.46 GiB | 1.86 GiB | 5.60 GiB |
-| Gemma 4-26B-A4B | 9.66 GiB | 2.42 GiB | 7.24 GiB |
-| DeepSeek-V3 (671B) | 16.20 GiB | 4.05 GiB | 12.15 GiB |
-| Gemma 4-31B | 19.13 GiB | 4.78 GiB | 14.35 GiB |
+| DeepSeek-V3 (671B) | 8.58 GiB | 2.15 GiB | 6.43 GiB |
 | Qwen 3.5-32B | 32.00 GiB | 8.00 GiB | 24.00 GiB |
 
 ---
@@ -373,11 +377,11 @@ Formula: VRAM ≈ Weights_bytes + KV_cache + Activations(0.3-0.5 GB) + CUDA_over
 
 | Model | Weights (BF16) | KV @ 128K | Overhead | Total | Hardware |
 |-------|---------------:|----------:|---------:|------:|----------|
+| Gemma 4-26B-A4B | ~50 GB (MoE) | 1.45 GiB | ~1 GB | ~52.5 GiB | 1× A100 80GB |
 | Qwen 3.6-35B-A3B | ~69 GB (weights, MoE) | 2.33 GiB | ~1 GB | ~72.5 GiB | 1× A100 80GB / 2× RTX 4090 |
+| Gemma 4-31B | ~61 GB | 5.78 GiB | ~1.5 GB | ~68.3 GiB | 1× A100 80GB |
 | Qwen 3.6-27B | ~54 GB | 7.46 GiB | ~1.5 GB | ~63.0 GiB | 1× A100 80GB |
-| Gemma 4-26B-A4B | ~50 GB (MoE) | 2.42 GiB | ~1 GB | ~53.5 GiB | 1× A100 80GB |
-| Gemma 4-31B | ~61 GB | 2.33 GiB | ~1.5 GB | ~65.0 GiB | 1× A100 80GB |
-| DeepSeek-V3 | ~1,342 GB (sharded) | 2.33 GiB | — | Weight-bound | KV is ~0.5% of weight size |
+| DeepSeek-V3 | ~1,342 GB (sharded) | 8.58 GiB | — | Weight-bound | KV is ~0.6% of weight size |
 | Qwen 3.5-32B | ~64 GB | 32.00 GiB | ~1.5 GB | ~97.5 GiB | 2× A100 80GB |
 
 ---
@@ -390,21 +394,22 @@ This is the key insight for models released in 2026. There are now **three funda
 
 **2. Linear Attention / Gated DeltaNet** (Qwen 3.6): Linear attention layers maintain a **fixed-size state matrix** that's O(1) with respect to sequence length. Only the interleaved full-attention layers contribute O(S) cache. Net growth rate = (1 / full_attn_interval) × full_rate.
 
-**3. MLA** (DeepSeek-V3): Compresses KV per token via low-rank projections. Still O(S) but with a dramatically reduced coefficient (~60× smaller per layer).
+**3. MLA** (DeepSeek-V3): Compresses KV per token via low-rank projections. Still O(S) but with a dramatically reduced coefficient (~57× smaller per layer).
 
 **Comparison at S → ∞:**
+
+The "effective rate" below compares each model's per-token growth to what a naive full-attention model with the same head dims would use. Note that Gemma 4's effective rate is further reduced by its K=V unification on global layers.
 
 | Architecture | Asymptotic KV growth | Effective rate |
 |--------------|---------------------|----------------|
 | Full attention | O(S) | 1.0× |
-| Gemma 4 (5:1 SWA:Full) | O(S) | 1/6 ≈ 17% |
-| Gemma 4-26B (5:1, MoE, 30L) | O(S) | 1/6 ≈ 17% |
 | Qwen 3.6 (3:1 Linear:Full) | O(S) | 1/4 = 25% |
 | Qwen 3.6-27B (3:1, 64L) | O(S) | 1/4 = 25% |
 | Qwen 3.6-35B-A3B (3:1, 40L) | O(S) | 1/4 = 25% |
-| DeepSeek-V3 (MLA) | O(S) | ~3% (vs full attn equivalent) |
+| Gemma 4 (5:1 SWA:Full, K=V) | O(S) | 1/6 × ~0.25 (K=V reduces full-layer rate) |
+| DeepSeek-V3 (MLA) | O(S) | ~1.7% (vs full attn equivalent) |
 
-Note: Qwen 3.6's "rate" of 25% looks worse than Gemma 4's 17%, but Qwen 3.6's linear layers have ZERO S-scaling at all — they're O(1) constants. At short context, Qwen 3.6 actually has slightly higher fixed-state overhead but grows slower because the full-attention layers use aggressive GQA (Q=24, KV=4).
+Note: Gemma 4's global/full layers use K=V unification and far fewer KV heads than the SWA layers. At long context (S >> W), only the 1/6 global layers grow, and they do so at a fraction of the per-head rate due to K=V sharing. Qwen 3.6's linear layers have ZERO S-scaling (O(1) constants). At short context, Qwen 3.6 has slightly higher fixed-state overhead but grows slower because the full-attention layers use aggressive GQA (Q=24, KV=4).
 
 ---
 
@@ -419,8 +424,9 @@ Note: Qwen 3.6's "rate" of 25% looks worse than Gemma 4's 17%, but Qwen 3.6's li
 
 ### Best models for long-context local inference
 
-- **Qwen 3.6-35B-A3B**: Smallest KV-cache (2.33 GiB @ 128K BF16), 3B active compute, 35B in memory. Best KV efficiency.
-- **Gemma 4-26B-A4B**: Small KV-cache (9.66 GiB @ 128K), 3.8B active compute. Good efficiency.
+- **Gemma 4-26B-A4B**: Smallest KV-cache (1.45 GiB @ 128K BF16), 3.8B active compute. Best KV efficiency thanks to K=V unification and SWA capping.
+- **Qwen 3.6-35B-A3B**: Very small KV-cache (2.33 GiB @ 128K BF16), 3B active compute, 35B in memory. Excellent KV efficiency.
+- **Gemma 4-31B**: Moderate KV-cache (5.78 GiB @ 128K), dense, benefits from K=V unification on global layers.
 - **Qwen 3.6-27B**: Dense model with only 7.46 GiB @ 128K. Excellent for a 27B dense model.
 
 ---
@@ -440,6 +446,6 @@ Note: Qwen 3.6's "rate" of 25% looks worse than Gemma 4's 17%, but Qwen 3.6's li
 
 ---
 
-*Document generated: 2026-05-13
+*Document generated: 2026-05-13 · Math corrected: 2026-05-15
 Configs fetched from: HuggingFace raw config.json endpoints
-Key finding: Qwen 3.6's hybrid Gated DeltaNet architecture makes its KV-cache grow at 25% of full-attention rate, while Gemma 4's 5:1 SWA:Full pattern achieves 17% — but both are dwarfed by DeepSeek's MLA at ~3%.*
+Key finding: Gemma 4's K=V unification on global layers makes it the most KV-efficient architecture at long context. Qwen 3.6's hybrid DeltaNet achieves 25% growth rate. DeepSeek's MLA achieves ~1.7% per-layer rate but has 61 layers. All three families dramatically outperform full-attention models like Qwen 3.5-32B.*

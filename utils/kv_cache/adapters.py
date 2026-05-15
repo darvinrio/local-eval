@@ -100,17 +100,38 @@ class Gemma4Adapter(KVCacheAdapter):
         text_config: dict[str, Any],
         kv_quant_bits: int = 16,
     ) -> KVCacheEstimate:
-        """Estimate the KV cache for a given model configuration."""
+        """Estimate the KV cache for a given model configuration.
+
+        Gemma 4 has two distinct layer types with different cache geometries:
+
+        - **SWA layers**: Standard K+V caching (2×) using ``num_key_value_heads``
+          and ``head_dim``.  Cache capped at ``sliding_window`` tokens.
+        - **Global/full layers**: K=V unification (``attention_k_eq_v=True``)
+          using ``num_global_key_value_heads`` and ``global_head_dim``.
+          Only one tensor is stored (1× not 2×).  Cache grows unbounded.
+        """
         layer_types = text_config.get("layer_types", [])
         num_sliding = layer_types.count("sliding_attention")
         num_full = layer_types.count("full_attention")
 
-        num_kv_heads = text_config.get("num_key_value_heads", 0)
-        head_dim = text_config.get("head_dim", 0)
+        dtype_bytes = kv_quant_bits / 8
         sliding_window = text_config.get("sliding_window", None)
 
-        dtype_bytes = kv_quant_bits / 8
-        bpt = int(2 * num_kv_heads * head_dim * dtype_bytes)
+        # --- SWA layers: standard K + V (2×) ---
+        num_kv_heads = text_config.get("num_key_value_heads", 0)
+        head_dim = text_config.get("head_dim", 0)
+        swa_bpt = int(2 * num_kv_heads * head_dim * dtype_bytes)
+
+        # --- Global/full layers: K=V unification (1×), separate head params ---
+        attention_k_eq_v = text_config.get("attention_k_eq_v", False)
+        global_kv_heads = text_config.get(
+            "num_global_key_value_heads", num_kv_heads
+        )
+        global_head_dim = text_config.get("global_head_dim", head_dim)
+        kv_multiplier = 1 if attention_k_eq_v else 2
+        full_bpt = int(
+            kv_multiplier * global_kv_heads * global_head_dim * dtype_bytes
+        )
 
         breakdowns = []
         if num_full > 0:
@@ -118,7 +139,7 @@ class Gemma4Adapter(KVCacheAdapter):
                 LayerKVCacheInfo(
                     layer_type="full_attention",
                     num_layers=num_full,
-                    bytes_per_token_per_layer=bpt,
+                    bytes_per_token_per_layer=full_bpt,
                     max_cache_tokens=None,
                     fixed_state_bytes_per_layer=0,
                 )
@@ -129,7 +150,7 @@ class Gemma4Adapter(KVCacheAdapter):
                 LayerKVCacheInfo(
                     layer_type="sliding_attention",
                     num_layers=num_sliding,
-                    bytes_per_token_per_layer=bpt,
+                    bytes_per_token_per_layer=swa_bpt,
                     max_cache_tokens=sliding_window,
                     fixed_state_bytes_per_layer=0,
                 )
