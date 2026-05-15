@@ -74,6 +74,11 @@ class KVCacheEstimate:
                     else context_tokens
                 )
                 total += lb.num_layers * lb.bytes_per_token_per_layer * effective
+
+        if total == 0:
+            raise ValueError(
+                "KV cache estimate is zero. Please check layer_breakdowns."
+            )
         return total
 
     def estimate_gb(self, context_tokens: int) -> float:
