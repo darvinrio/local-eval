@@ -15,8 +15,8 @@ class Config(msgspec.Struct):
     LATENCY_PROMPT: str
 
 
-ALLOWED_STRIDES: Final[tuple[int, ...]] = (2, 4, 8, 16, 32, 64, 128, 256, 512)
-Stride = Literal[2, 4, 8, 16, 32, 64, 128, 256, 512]
+ALLOWED_STRIDES: Final[tuple[int, ...]] = (1, 2, 4, 8, 16, 32, 64, 128, 256, 512)
+Stride = Literal[1, 2, 4, 8, 16, 32, 64, 128, 256, 512]
 
 
 class MLXContextConfig(msgspec.Struct):
