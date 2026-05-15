@@ -18,6 +18,9 @@ class Config(msgspec.Struct):
 ALLOWED_STRIDES: Final[tuple[int, ...]] = (1, 2, 4, 8, 16, 32, 64, 128, 256, 512)
 Stride = Literal[1, 2, 4, 8, 16, 32, 64, 128, 256, 512]
 
+ALLOWED_KV_QUANT_BITS: Final[tuple[int, ...]] = (4, 8, 16)
+KVQuantBits = Literal[4, 8, 16]
+
 
 class MLXContextConfig(msgspec.Struct):
     """
@@ -39,6 +42,7 @@ class MLXContextConfig(msgspec.Struct):
         per_token_timing_max_tokens: Maximum number of tokens to capture per run.
         trace_stride: Stride for capturing per-token timings.
         include_final_token_in_trace: Whether to include the final token in the trace.
+        kv_quant_bits: Number of bits to use for KV cache quantization.
 
     Note:
         `trace_stride` is a power of 2 to ensure efficient sampling and not zero.
@@ -59,7 +63,7 @@ class MLXContextConfig(msgspec.Struct):
     per_token_timing_max_tokens: int | None = None
     trace_stride: Stride = 32
     include_final_token_in_trace: bool = True
-    kv_quant_bits: int = 16
+    kv_quant_bits: KVQuantBits = 16
 
     def __post_init__(self) -> None:
         """Validate the stride is one of the allowed values."""
