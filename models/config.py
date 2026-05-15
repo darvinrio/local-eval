@@ -59,6 +59,7 @@ class MLXContextConfig(msgspec.Struct):
     per_token_timing_max_tokens: int | None = None
     trace_stride: Stride = 32
     include_final_token_in_trace: bool = True
+    kv_quant_bits: int = 16
 
     def __post_init__(self) -> None:
         """Validate the stride is one of the allowed values."""

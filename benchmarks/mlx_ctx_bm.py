@@ -24,6 +24,7 @@ from models.results import (
     TokenTiming,
 )
 from utils.basic import unload
+from utils.kv_cache import estimate_kv_cache
 
 
 def _build_context(
@@ -95,6 +96,7 @@ def _memory_preflight(
     safety_threshold: float,
     generation_headroom_gb: float,
     pre_load_available_gb: float,
+    kv_quant_bits: int = 16,
 ) -> tuple[bool, str]:
     """
     Preflight memory usage for the task.
@@ -108,57 +110,26 @@ def _memory_preflight(
         generation_headroom_gb: Headroom for generation.
         pre_load_available_gb: Available system memory captured *before* model
             load.
+        kv_quant_bits: Bits per KV element. 16 = bf16 (default),
+                       8 or 4 for quantised KV cache testing.
 
     Returns:
         tuple[bool, str]: Whether memory preflight passed and reason.
     """
-    num_layers = config.get("num_hidden_layers", config.get("num_layers", 0))
-
-    head_dim = max(
-        config.get("head_dim", 0),
-        config.get("global_head_dim", 0),
-        config.get("linear_key_head_dim", 0),
-        config.get("linear_value_head_dim", 0),
-    )
-
-    num_kv_heads = max(
-        config.get("num_key_value_heads", 0),
-        config.get("num_global_key_value_heads", 0),
-        config.get("linear_num_key_heads", 0),
-        config.get("linear_num_value_heads", 0),
-    )
-
-    if head_dim == 0 and "hidden_size" in config and "num_attention_heads" in config:
-        head_dim = config["hidden_size"] // config["num_attention_heads"]
-
-    dtype_bytes = 2
-
-    kv_cache_gb = (
-        context_tokens * num_layers * num_kv_heads * head_dim * 2 * dtype_bytes
-    ) / 1e9
-
-    if kv_cache_gb == 0 and context_tokens > 0:
-        logger.warning(
-            f"KV cache estimate is 0 GB for {context_tokens} tokens. "
-            f"Config may be missing expected keys: {list(config.keys())}. "
-            f"Falling back to heuristic: 0.5 bytes/token/layer."
-        )
-        num_layers_fallback = config.get(
-            "num_hidden_layers", config.get("num_layers", 32)
-        )
-        # Heuristic: ~0.5 bytes per token per layer is a rough lower bound
-        # for GQA models with small KV heads
-        kv_cache_gb = (context_tokens * num_layers_fallback * 0.5) / 1e9
+    estimate = estimate_kv_cache(config, kv_quant_bits=kv_quant_bits)
+    kv_cache_gb = estimate.estimate_gb(context_tokens)
 
     model_weights_gb = mx.get_active_memory() / 1e9
     required_gb = model_weights_gb + kv_cache_gb + generation_headroom_gb
 
     logger.debug(
-        f"Preflight: layers={num_layers} kv_heads={num_kv_heads} "
-        f"head_dim={head_dim} → kv_cache={kv_cache_gb:.2f} GB, "
-        f"model_weights={model_weights_gb:.2f} GB, "
-        f"required={required_gb:.2f} GB vs "
-        f"available={pre_load_available_gb:.2f} GB × {safety_threshold}"
+        f"Preflight: {estimate.model_type} kv_bits={estimate.kv_quant_bits} "
+        f"kv_cache={kv_cache_gb:.2f} GiB | breakdown: "
+        + ", ".join(
+            f"{lb.layer_type}({lb.num_layers}L)={lb.bytes_per_token_per_layer}B/tok/L"
+            + (f" cap={lb.max_cache_tokens}" if lb.max_cache_tokens else "")
+            for lb in estimate.layer_breakdowns
+        )
     )
 
     if required_gb > pre_load_available_gb * safety_threshold:
@@ -355,6 +326,7 @@ def run_ctx_sweep(
                         config.memory_safety_threshold,
                         config.generation_headroom_gb,
                         pre_load_available_gb,
+                        kv_quant_bits=config.kv_quant_bits,
                     )
 
                     if not safe:
