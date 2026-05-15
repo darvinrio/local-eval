@@ -198,7 +198,7 @@ def _single_run(
     t_last_recorded: float = t_start  # timestamp of the most recently stored token
 
     # Config options
-    capture_traces = config.capture_per_token_timings if config else True
+    capture_traces = config.capture_per_token_timings if config else False
     max_trace_tokens = config.per_token_timing_max_tokens if config else None
     stride = config.trace_stride if config else 1
     include_final = config.include_final_token_in_trace if config else True
