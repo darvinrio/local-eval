@@ -305,7 +305,7 @@ def _memory_preflight(
     estimate = estimate_kv_cache(text_config, kv_quant_bits=kv_quant_bits)
     kv_cache_gb = estimate.estimate_gb(context_tokens)
 
-    model_weights_gb = mx.get_active_memory() / 1e9
+    model_weights_gb = mx.get_active_memory() / (1024**3)
     required_gb = model_weights_gb + kv_cache_gb + generation_headroom_gb
 
     logger.debug(

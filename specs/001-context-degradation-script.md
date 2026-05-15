@@ -168,10 +168,10 @@ Before the sweep begins, for each `(task, context_size)` pair:
 ```
 kv_cache_gb = (
     context_tokens × num_layers × num_kv_heads × head_dim × 2 × dtype_bytes
-) / 1e9
+) / (1024**3)
 
 required_gb = model_weights_gb + kv_cache_gb + generation_headroom_gb
-available_gb = psutil.virtual_memory().available / 1e9
+available_gb = psutil.virtual_memory().available / (1024**3)
 ```
 
 `num_layers`, `num_kv_heads`, `head_dim` are read from the model `config` dict

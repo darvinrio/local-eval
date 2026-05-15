@@ -291,7 +291,7 @@ if kv_cache_gb == 0 and context_tokens > 0:
     )
     # Heuristic: ~0.5 bytes per token per layer is a rough lower bound
     # for GQA models with small KV heads
-    kv_cache_gb = (context_tokens * num_layers_fallback * 0.5) / 1e9
+    kv_cache_gb = (context_tokens * num_layers_fallback * 0.5) / (1024**3)
 ```
 
 > **Important**: The zero-estimate guard must also log the resolved config
@@ -330,15 +330,15 @@ Conservative max:
   head_dim = max(256, 512) = 512
   num_kv_heads = max(8, 2) = 8
 
-kv_cache_gb = 131072 × 30 × 8 × 512 × 2 × 2 / 1e9
-            = 131072 × 30 × 8 × 512 × 4 / 1e9
-            ≈ 64.4 GB
+kv_cache_gb = 131072 × 30 × 8 × 512 × 2 × 2 / (1024**3)
+            = 131072 × 30 × 8 × 512 × 4 / (1024**3)
+            ≈ 60 GiB
 
-model_weights ≈ 17 GB
-headroom = 1.0 GB
-required = 17 + 64.4 + 1.0 = 82.4 GB
+model_weights ≈ 17 GiB
+headroom = 1.0 GiB
+required = 17 + 60 + 1.0 = 78 GiB
 
-On 48 GB machine: 82.4 > 38 × 0.95 → SKIP ✓
+On 48 GB machine: 78 > 38 × 0.95 → SKIP ✓
 ```
 
 (The real KV cache is smaller due to sliding attention layers using the
@@ -359,8 +359,8 @@ Conservative max:
   head_dim = max(256, 128, 128) = 256
   num_kv_heads = max(2, 16, 32) = 32
 
-kv_cache_gb = 65536 × 40 × 32 × 256 × 2 × 2 / 1e9
-            ≈ 85.9 GB → SKIP ✓
+kv_cache_gb = 65536 × 40 × 32 × 256 × 2 × 2 / (1024**3)
+            ≈ 75 GiB → SKIP ✓
 
 (Highly conservative — real usage is lower because linear attention layers
 don't maintain traditional KV caches. But the estimate correctly prevents

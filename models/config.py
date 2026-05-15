@@ -33,7 +33,7 @@ class MLXContextConfig(msgspec.Struct):
         warmup_runs: Number of warmup runs.
         memory_safety_threshold: Fraction of available RAM to use.
         force_run: Whether to force run even if memory is insufficient.
-        generation_headroom_gb: Headroom for generation in GB.
+        generation_headroom_gb: Headroom for generation in GiB.
         output_dir: Directory to save results.
         capture_per_token_timings: Whether to capture per-token timings.
         per_token_timing_max_tokens: Maximum number of tokens to capture per run.

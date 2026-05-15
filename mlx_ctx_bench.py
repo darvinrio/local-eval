@@ -60,7 +60,7 @@ def emit_rich_table(results_data: list[Any]) -> None:
     table.add_column("Tok. Time (ms)", justify="right")
     table.add_column("Prefill TPS", justify="right")
     table.add_column("Decode TPS", justify="right")
-    table.add_column("Mem (GB)", justify="right")
+    table.add_column("Mem (GiB)", justify="right")
     table.add_column("Status", justify="center")
 
     for res in results_data:

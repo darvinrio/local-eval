@@ -124,7 +124,7 @@ def _memory_preflight(
     estimate = estimate_kv_cache(config, kv_quant_bits=kv_quant_bits)
     kv_cache_gb = estimate.estimate_gb(context_tokens)
 
-    model_weights_gb = mx.get_active_memory() / 1e9
+    model_weights_gb = mx.get_active_memory() / (1024**3)
     required_gb = model_weights_gb + kv_cache_gb + generation_headroom_gb
 
     logger.debug(
@@ -139,16 +139,16 @@ def _memory_preflight(
 
     if required_gb > pre_load_available_gb * safety_threshold:
         reason = (
-            f"Required memory ({required_gb:.1f} GB) exceeds threshold of "
-            f"pre-load available ({pre_load_available_gb:.1f} GB)"
+            f"Required memory ({required_gb:.1f} GiB) exceeds threshold of "
+            f"pre-load available ({pre_load_available_gb:.1f} GiB)"
         )
         if not force_run:
             logger.warning(f"Skipping {task.task_id} at {context_tokens}: {reason}")
             return False, reason
         else:
             ans = input(
-                f"⚠  {context_tokens} tokens may use {required_gb:.1f} GB "
-                f"(pre-load available: {pre_load_available_gb:.1f} GB). Proceed? [y/N]:"
+                f"⚠  {context_tokens} tokens may use {required_gb:.1f} GiB "
+                f"(pre-load available: {pre_load_available_gb:.1f} GiB).Proceed? [y/N]:"
             )
             if ans.lower() != "y":
                 return False, reason
@@ -290,8 +290,8 @@ def run_ctx_sweep(
     model_name = config.model_name
     mx.random.seed(config.seed)
 
-    pre_load_available_gb = psutil.virtual_memory().available / 1e9
-    logger.info(f"Pre-load available memory: {pre_load_available_gb:.2f} GB")
+    pre_load_available_gb = psutil.virtual_memory().available / (1024**3)
+    logger.info(f"Pre-load available memory: {pre_load_available_gb:.2f} GiB")
 
     logger.info(f"Loading model {model_name}...")
     load_result = cast(
