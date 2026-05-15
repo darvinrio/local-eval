@@ -79,12 +79,17 @@ def _resolve_text_config(config: dict[str, Any]) -> dict[str, Any]:
 
     Returns:
         The sub-dict containing num_hidden_layers, num_key_value_heads, etc.
+        For nested configs, preserves top-level model discriminator fields
+        needed by downstream adapter selection.
     """
     for sub_key in ("text_config", "language_config", "llm_config"):
         if sub_key in config and isinstance(config[sub_key], dict):
             sub = config[sub_key]
             if "num_hidden_layers" in sub or "num_layers" in sub:
-                return sub
+                resolved = dict(sub)
+                if "model_type" in config and "model_type" not in resolved:
+                    resolved["model_type"] = config["model_type"]
+                return resolved
     return config
 
 
