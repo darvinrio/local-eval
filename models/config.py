@@ -66,6 +66,10 @@ class MLXContextConfig(msgspec.Struct):
     kv_quant_bits: KVQuantBits = 16
 
     def __post_init__(self) -> None:
-        """Validate the stride is one of the allowed values."""
+        """Validate constrained configuration values."""
         if self.trace_stride not in ALLOWED_STRIDES:
             raise ValueError(f"stride must be one of {ALLOWED_STRIDES}")
+        if self.kv_quant_bits not in ALLOWED_KV_QUANT_BITS:
+            raise ValueError(
+                f"kv_quant_bits must be one of {ALLOWED_KV_QUANT_BITS}"
+            )
