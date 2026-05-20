@@ -68,6 +68,31 @@ unsloth run \
   --api-key ha
 ```
 
+## llama-bench
+
+```sh
+llama-bench \
+    -m ~/models/Qwen3.6-27B-Q4_K_S.gguf \
+    -b 2048 -ub 2048 \
+    -p 4096,8192,16384,32768,65536,131072 -n 1024 \
+    -fa 1 -ctk q4_1 -ctv q4_1 \
+    -o csv --progress
+```
+
+
+```sh
+llama-bench \
+    -m ~/models/Qwen3.6-27B-MTP-Q4_K_S.gguf \
+    -b 2048 -ub 2048 \
+    -p 4096,8192,16384,32768,65536,131072 -n 1024 \
+    -fa 1 -ctk q4_1 -ctv q4_1 \
+    -o csv --progress
+```
+
+
+
+`-ggml_metal_device_init: recommendedMaxWorkingSetSize  = 21474.84 MB`
+
 ## helpful commands
 
 ### mac iogpu
