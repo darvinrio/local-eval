@@ -51,6 +51,34 @@ llama-server \
   --host 0.0.0.0 --port 8888
 ```
 
+```sh
+./llama.cpp/llama-server \
+  -m ~/models/Qwen3.6-27B-MTP-Q4_K_S.gguf \
+  -ngl 99 \
+  -b 2048 -ub 2048 \
+  --parallel 1 \
+  --jinja \
+  -c 32768 \
+  -fa 1 -ctk q8_0 -ctv q8_0 \
+  --spec-type draft-mtp --spec-draft-n-max 3 \
+  -ctkd q8_0 -ctvd q8_0 \
+  --host 0.0.0.0 --port 8888
+```
+
+```sh
+./llama.cpp/llama-server \
+  -m ~/models/Qwen3.6-27B-Q4_K_S.gguf \
+  -ngl 99 \
+  -b 2048 -ub 2048 \
+  --parallel 1 \
+  --jinja \
+  -c 32768 \
+  -fa 1 -ctk q8_0 -ctv q8_0 \
+  --host 0.0.0.0 --port 8888 \
+  --reasoning-budget 6000 \
+  --reasoning-budget-message "nn[Budget reached: Reasoning summarized for final output.]nn"
+```
+
 ## run model via unsloth cli
 
 ```sh
@@ -88,8 +116,6 @@ llama-bench \
     -fa 1 -ctk q4_1 -ctv q4_1 \
     -o csv --progress
 ```
-
-
 
 `-ggml_metal_device_init: recommendedMaxWorkingSetSize  = 21474.84 MB`
 

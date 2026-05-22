@@ -106,9 +106,20 @@ class Gemma4Adapter(KVCacheAdapter):
 
         - **SWA layers**: Standard K+V caching (2×) using ``num_key_value_heads``
           and ``head_dim``.  Cache capped at ``sliding_window`` tokens.
-        - **Global/full layers**: K=V unification (``attention_k_eq_v=True``)
-          using ``num_global_key_value_heads`` and ``global_head_dim``.
-          Only one tensor is stored (1× not 2×).  Cache grows unbounded.
+        - **Global/full layers**: Standard K+V caching (2×) using
+          ``num_global_key_value_heads`` and ``global_head_dim``.
+          Cache grows unbounded.
+
+        .. note::
+
+            ``attention_k_eq_v=True`` in the HF config only means K and V
+            projections share the same shape/dimensions — it does **not**
+            confirm that the runtime stores them as a single unified tensor.
+            We default to the conservative 2× estimate (separate K and V caches)
+            to match standard Transformer KV cache semantics.
+
+            Unified KV (1×) is backend-dependent and unconfirmed for MLX/llama.cpp.
+            See ``docs/kv_calc/models/gemma4_26a4b_kv_calc.md`` for the full analysis.
         """
         layer_types = text_config.get("layer_types", [])
         num_sliding = layer_types.count("sliding_attention")
@@ -122,16 +133,12 @@ class Gemma4Adapter(KVCacheAdapter):
         head_dim = text_config.get("head_dim", 0)
         swa_bpt = int(2 * num_kv_heads * head_dim * dtype_bytes)
 
-        # --- Global/full layers: K=V unification (1×), separate head params ---
-        attention_k_eq_v = text_config.get("attention_k_eq_v", False)
-        global_kv_heads = text_config.get(
-            "num_global_key_value_heads", num_kv_heads
-        )
-        global_head_dim = text_config.get("global_head_dim", head_dim)
-        kv_multiplier = 1 if attention_k_eq_v else 2
-        full_bpt = int(
-            kv_multiplier * global_kv_heads * global_head_dim * dtype_bytes
-        )
+        # --- Full/global layers: standard K + V (2×), using main KV heads ---
+        # The global KV heads (num_global_key_value_heads=2, global_head_dim=512)
+        # are a compressed/auxiliary representation. Full attention layers cache
+        # using the standard num_key_value_heads and head_dim, same as SWA layers.
+        # See docs/kv_calc/models/gemma4_26a4b_kv_calc.md for analysis.
+        full_bpt = int(2 * num_kv_heads * head_dim * dtype_bytes)
 
         breakdowns = []
         if num_full > 0:
