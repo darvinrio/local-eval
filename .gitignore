@@ -12,3 +12,4 @@ wheels/
 
 #
 .opencode
+.DS_Store

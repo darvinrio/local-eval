@@ -10,6 +10,8 @@ Evaluating local models
 * `leonsarmiento/Qwen3.6-27B-3bit-mlx`
 * `unsloth/Qwen3.6-35B-A3B-UD-MLX-3bit`
 * `mlx-community/Qwen3.5-9B-MLX-4bit`
+* `unsloth/Qwen3.6-27B-MTP-GGUF', variant=UD-Q3_K_XL`
+* `unsloth/Qwen3.6-35B-A3B-GGUF:Q3_K_S`
 
 ## run mlx_lm
 
@@ -29,22 +31,101 @@ unsloth studio -H 0.0.0.0 -p 8888
 
 ```sh
 llama-server \                                    
-  --model ./Qwen3-Coder-30B-A3B-Instruct-IQ4_XS.gguf \     
-  --n-gpu-layers 99 \                                      
-  -ot ".ffn_.*_exps.*=CPU" \
+  --model Qwen3.6-35B-A3B-UD-IQ4_XS.gguf \     
   --ctx-size 65536 \
-  --cache-type-k q4_0 \
-  --cache-type-v q4_0 \
+  --cache-type-k q4_1 \
+  --cache-type-v q4_1 \
   --parallel 1 \
-  --no-warmup \
-  --flash-attn on \
   --temp 0.7 --min-p 0.01 --top-p 0.80 --top-k 20 \
   --repeat-penalty 1.05 \
   --jinja \
   --host 0.0.0.0 --port 8888
 ```
 
+```sh
+llama-server \
+  --model ~/.cache/huggingface/hub/models--unsloth--Qwen3.6-35B-A3B-GGUF/blobs/649d7508507b84638732c4f52c24c8b15843c6dca2f3ff793ae07c14a67ebbb3 \
+  --jinja \
+  -c 65536 \
+  -ctk q4_1 -ctv q4_1 \
+  --host 0.0.0.0 --port 8888
+```
+
+```sh
+./llama.cpp/llama-server \
+  -m ~/models/Qwen3.6-27B-MTP-Q4_K_S.gguf \
+  -ngl 99 \
+  -b 2048 -ub 2048 \
+  --parallel 1 \
+  --jinja \
+  -c 32768 \
+  -fa 1 -ctk q8_0 -ctv q8_0 \
+  --spec-type draft-mtp --spec-draft-n-max 3 \
+  -ctkd q8_0 -ctvd q8_0 \
+  --host 0.0.0.0 --port 8888
+```
+
+```sh
+./llama.cpp/llama-server \
+  -m ~/models/Qwen3.6-27B-Q4_K_S.gguf \
+  -ngl 99 \
+  -b 2048 -ub 2048 \
+  --parallel 1 \
+  --jinja \
+  -c 32768 \
+  -fa 1 -ctk q8_0 -ctv q8_0 \
+  --host 0.0.0.0 --port 8888 \
+  --reasoning-budget 6000 \
+  --reasoning-budget-message "nn[Budget reached: Reasoning summarized for final output.]nn"
+```
+
+## run model via unsloth cli
+
+```sh
+unsloth run --model unsloth/Qwen3.6-35B-A3B-GGUF:Q3_K_S -c 131072 -ctk q4_1 -ctv q4_1
+```
+
+## run mtp model via unsloth cli
+
+```sh
+unsloth run \
+  --model unsloth/Qwen3.6-27B-MTP-GGUF:UD-Q3_K_XL \
+  -c 131072 -ctk q4_1 -ctv q4_1 \
+  --spec-type draft-mtp --spec-draft-n-max 6 \
+  --spec-draft-type-k q8_0 --spec-draft-type-v q8_0 \
+  --api-key ha
+```
+
+## llama-bench
+
+```sh
+llama-bench \
+    -m ~/models/Qwen3.6-27B-Q4_K_S.gguf \
+    -b 2048 -ub 2048 \
+    -p 4096,8192,16384,32768,65536,131072 -n 1024 \
+    -fa 1 -ctk q4_1 -ctv q4_1 \
+    -o csv --progress
+```
+
+
+```sh
+llama-bench \
+    -m ~/models/Qwen3.6-27B-MTP-Q4_K_S.gguf \
+    -b 2048 -ub 2048 \
+    -p 4096,8192,16384,32768,65536,131072 -n 1024 \
+    -fa 1 -ctk q4_1 -ctv q4_1 \
+    -o csv --progress
+```
+
+`-ggml_metal_device_init: recommendedMaxWorkingSetSize  = 21474.84 MB`
+
 ## helpful commands
+
+### mac iogpu
+
+```sh
+sudo sysctl ogpu.wired_limit_mb=20480 
+```
 
 ### python
 

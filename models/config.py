@@ -4,6 +4,8 @@ models/config.py
 Config Variables
 """
 
+from typing import Final, Literal
+
 import msgspec
 
 
@@ -11,6 +13,13 @@ class Config(msgspec.Struct):
     """Config storing variables for benchmarking"""
 
     LATENCY_PROMPT: str
+
+
+ALLOWED_STRIDES: Final[tuple[int, ...]] = (1, 2, 4, 8, 16, 32, 64, 128, 256, 512)
+Stride = Literal[1, 2, 4, 8, 16, 32, 64, 128, 256, 512]
+
+ALLOWED_KV_QUANT_BITS: Final[tuple[int, ...]] = (4, 8, 16)
+KVQuantBits = Literal[4, 8, 16]
 
 
 class MLXContextConfig(msgspec.Struct):
@@ -27,8 +36,16 @@ class MLXContextConfig(msgspec.Struct):
         warmup_runs: Number of warmup runs.
         memory_safety_threshold: Fraction of available RAM to use.
         force_run: Whether to force run even if memory is insufficient.
-        generation_headroom_gb: Headroom for generation in GB.
+        generation_headroom_gb: Headroom for generation in GiB.
         output_dir: Directory to save results.
+        capture_per_token_timings: Whether to capture per-token timings.
+        per_token_timing_max_tokens: Maximum number of tokens to capture per run.
+        trace_stride: Stride for capturing per-token timings.
+        include_final_token_in_trace: Whether to include the final token in the trace.
+        kv_quant_bits: Number of bits to use for KV cache quantization.
+
+    Note:
+        `trace_stride` is a power of 2 to ensure efficient sampling and not zero.
     """
 
     model_name: str
@@ -42,3 +59,17 @@ class MLXContextConfig(msgspec.Struct):
     force_run: bool
     generation_headroom_gb: float
     output_dir: str
+    capture_per_token_timings: bool = True
+    per_token_timing_max_tokens: int | None = None
+    trace_stride: Stride = 32
+    include_final_token_in_trace: bool = True
+    kv_quant_bits: KVQuantBits = 16
+
+    def __post_init__(self) -> None:
+        """Validate constrained configuration values."""
+        if self.trace_stride not in ALLOWED_STRIDES:
+            raise ValueError(f"stride must be one of {ALLOWED_STRIDES}")
+        if self.kv_quant_bits not in ALLOWED_KV_QUANT_BITS:
+            raise ValueError(
+                f"kv_quant_bits must be one of {ALLOWED_KV_QUANT_BITS}"
+            )

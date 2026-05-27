@@ -4,6 +4,7 @@ scripts/random/prep_large_context.py
 Simple script to test the context building.
 """
 
+import json
 from typing import TYPE_CHECKING, Any, cast
 
 import mlx.core as mx
@@ -33,4 +34,8 @@ model, tokenizer, model_config = load_result
 
 messages, actual_tokens = _build_context(TASK_REGISTRY[TASK], CONTEXT_SIZE, tokenizer)
 
-print(messages, actual_tokens)
+# print(messages, actual_tokens)
+
+# write to json
+with open("output/random/large_context.json", "w") as f:
+    json.dump(messages, f)

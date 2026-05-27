@@ -21,12 +21,12 @@ CONFIG = MLXContextConfig(
     model_name="Jiunsong/supergemma4-26b-uncensored-mlx-4bit-v2",
     seed=42,
     # Context sweep
-    context_sizes=[512, 1024, 2048, 4096, 8192, 16384, 32768],
+    context_sizes=[4096, 16384, 32768, 65536, 131072],
     # Tasks — must be keys registered in TASK_REGISTRY
     # active_tasks=["bug_detection", "classifier", "dbt_model"],
     active_tasks=["bug_detection"],
     # Generation
-    max_tokens=256,
+    max_tokens=4096,
     # Run control
     warmup_runs=1,
     num_runs=3,
@@ -36,6 +36,11 @@ CONFIG = MLXContextConfig(
     generation_headroom_gb=1.0,  # buffer on top of weight + KV estimate
     # Output
     output_dir="output",
+    # Per-token tracing
+    capture_per_token_timings=True,
+    per_token_timing_max_tokens=None,
+    trace_stride=32,
+    include_final_token_in_trace=True,
 )
 
 
@@ -55,11 +60,15 @@ def emit_rich_table(results_data: list[Any]) -> None:
     table.add_column("Tok. Time (ms)", justify="right")
     table.add_column("Prefill TPS", justify="right")
     table.add_column("Decode TPS", justify="right")
-    table.add_column("Mem (GB)", justify="right")
+    table.add_column("Mem (GiB)", justify="right")
     table.add_column("Status", justify="center")
 
     for res in results_data:
         if res.skipped:
+            if res.skip_reason.startswith("error:"):
+                status_str = "[red]ERR[/red]"
+            else:
+                status_str = "[yellow]SKIP[/yellow]"
             table.add_row(
                 res.task_id,
                 str(res.target_context_tokens),
@@ -68,7 +77,7 @@ def emit_rich_table(results_data: list[Any]) -> None:
                 "—",
                 "—",
                 "—",
-                "[yellow]SKIP[/yellow]",
+                status_str,
             )
         else:
             table.add_row(

@@ -4,6 +4,7 @@ benchmarks/mlx_ctx_bm.py
 Context scaling benchmark runner.
 """
 
+import gc
 import time
 from typing import Any, cast
 
@@ -16,8 +17,14 @@ from mlx_lm.tokenizer_utils import TokenizerWrapper
 
 from benchmarks.tasks.base import ContextTask
 from models.config import MLXContextConfig
-from models.results import ContextScaleResult, ContextScaleSweepResult
+from models.results import (
+    ContextScaleResult,
+    ContextScaleRunResult,
+    ContextScaleSweepResult,
+    TokenTiming,
+)
 from utils.basic import unload
+from utils.kv_cache import estimate_kv_cache
 
 
 def _build_context(
@@ -58,6 +65,34 @@ def _build_context(
     return messages, len(final_tokens)
 
 
+def _resolve_text_config(config: dict[str, Any]) -> dict[str, Any]:
+    """
+    Extract the text model config from a potentially nested model config.
+
+    Multimodal models (Gemma4ForConditionalGeneration,
+    Qwen3_5MoeForConditionalGeneration, etc.) nest architecture params
+    under 'text_config' or 'language_config'. Text-only models have them
+    at the root level.
+
+    Args:
+        config: Raw config dict from mlx_lm.load(..., return_config=True).
+
+    Returns:
+        The sub-dict containing num_hidden_layers, num_key_value_heads, etc.
+        For nested configs, preserves top-level model discriminator fields
+        needed by downstream adapter selection.
+    """
+    for sub_key in ("text_config", "language_config", "llm_config"):
+        if sub_key in config and isinstance(config[sub_key], dict):
+            sub = config[sub_key]
+            if "num_hidden_layers" in sub or "num_layers" in sub:
+                resolved = dict(sub)
+                if "model_type" in config and "model_type" not in resolved:
+                    resolved["model_type"] = config["model_type"]
+                return resolved
+    return config
+
+
 def _memory_preflight(
     task: ContextTask,
     context_tokens: int,
@@ -66,6 +101,7 @@ def _memory_preflight(
     safety_threshold: float,
     generation_headroom_gb: float,
     pre_load_available_gb: float,
+    kv_quant_bits: int = 16,
 ) -> tuple[bool, str]:
     """
     Preflight memory usage for the task.
@@ -79,39 +115,40 @@ def _memory_preflight(
         generation_headroom_gb: Headroom for generation.
         pre_load_available_gb: Available system memory captured *before* model
             load.
+        kv_quant_bits: Bits per KV element. 16 = bf16 (default),
+                       8 or 4 for quantised KV cache testing.
 
     Returns:
         tuple[bool, str]: Whether memory preflight passed and reason.
     """
-    num_layers = config.get("num_hidden_layers", config.get("num_layers", 0))
-    num_kv_heads = config.get("num_key_value_heads", config.get("num_kv_heads", 0))
-    head_dim = config.get(
-        "head_dim", config.get("hidden_size", 0) // config.get("num_attention_heads", 1)
-    )
-    if head_dim == 0 and "hidden_size" in config and "num_attention_heads" in config:
-        head_dim = config["hidden_size"] // config["num_attention_heads"]
+    estimate = estimate_kv_cache(config, kv_quant_bits=kv_quant_bits)
+    kv_cache_gb = estimate.estimate_gb(context_tokens)
 
-    dtype_bytes = 2
-
-    kv_cache_gb = (
-        context_tokens * num_layers * num_kv_heads * head_dim * 2 * dtype_bytes
-    ) / 1e9
-
-    model_weights_gb = mx.metal.get_active_memory() / 1e9
+    model_weights_gb = mx.get_active_memory() / (1024**3)
     required_gb = model_weights_gb + kv_cache_gb + generation_headroom_gb
+
+    logger.debug(
+        f"Preflight: {estimate.model_type} kv_bits={estimate.kv_quant_bits} "
+        f"kv_cache={kv_cache_gb:.2f} GiB | breakdown: "
+        + ", ".join(
+            f"{lb.layer_type}({lb.num_layers}L)={lb.bytes_per_token_per_layer}B/tok/L"
+            + (f" cap={lb.max_cache_tokens}" if lb.max_cache_tokens else "")
+            for lb in estimate.layer_breakdowns
+        )
+    )
 
     if required_gb > pre_load_available_gb * safety_threshold:
         reason = (
-            f"Required memory ({required_gb:.1f} GB) exceeds threshold of "
-            f"pre-load available ({pre_load_available_gb:.1f} GB)"
+            f"Required memory ({required_gb:.1f} GiB) exceeds threshold of "
+            f"pre-load available ({pre_load_available_gb:.1f} GiB)"
         )
         if not force_run:
             logger.warning(f"Skipping {task.task_id} at {context_tokens}: {reason}")
             return False, reason
         else:
             ans = input(
-                f"⚠  {context_tokens} tokens may use {required_gb:.1f} GB "
-                f"(pre-load available: {pre_load_available_gb:.1f} GB). Proceed? [y/N]:"
+                f"⚠  {context_tokens} tokens may use {required_gb:.1f} GiB "
+                f"(pre-load available: {pre_load_available_gb:.1f} GiB).Proceed? [y/N]:"
             )
             if ans.lower() != "y":
                 return False, reason
@@ -124,7 +161,9 @@ def _single_run(
     tokenizer: TokenizerWrapper,
     messages: list[dict[str, str]],
     max_tokens: int,
-) -> tuple[float, float, float, float, float, int]:
+    run_index: int = 0,
+    config: MLXContextConfig | None = None,
+) -> ContextScaleRunResult:
     """
     Run a single inference run.
 
@@ -133,14 +172,17 @@ def _single_run(
         tokenizer: Tokenizer to use.
         messages: Messages to send to the model.
         max_tokens: Maximum number of tokens to generate.
+        run_index: Index of the run.
+        config: Configuration for the benchmark.
 
     Returns:
-        tuple[float, float, float, float, float, int]: Metrics for the run.
+        ContextScaleRunResult: Metrics for the run.
     """
     t0 = time.perf_counter()
     tokenized_prompt = tokenizer.apply_chat_template(
         messages, add_generation_prompt=True, tokenize=True
     )
+    prompt_tokens = len(tokenized_prompt)
     tokenizer_time_ms = (time.perf_counter() - t0) * 1000
 
     gen = stream_generate(
@@ -148,25 +190,87 @@ def _single_run(
     )
 
     t_start = time.perf_counter()
+    prev_time = t_start
     t_first_token = None
 
+    per_token_timings: list[TokenTiming] = []
     response = None
-    for response in gen:
+    t_last_recorded: float = t_start  # timestamp of the most recently stored token
+
+    # Config options
+    capture_traces = config.capture_per_token_timings if config else False
+    max_trace_tokens = config.per_token_timing_max_tokens if config else None
+    stride = config.trace_stride if config else 1
+    include_final = config.include_final_token_in_trace if config else True
+
+    for i, response in enumerate(gen):
+        now = time.perf_counter()
+        token_index = i + 1  # 1-based index
+
         if t_first_token is None:
-            t_first_token = time.perf_counter()
+            t_first_token = now
+
+        if capture_traces:
+            # Check if we should record this token
+            should_record = False
+            if max_trace_tokens is None or token_index <= max_trace_tokens:
+                if (token_index - 1) % stride == 0:
+                    should_record = True
+
+            if should_record:
+                delta_ms = (now - prev_time) * 1000
+                since_start_ms = (now - t_start) * 1000
+                since_first_token_ms = (now - t_first_token) * 1000
+
+                per_token_timings.append(
+                    TokenTiming(
+                        token_index=token_index,
+                        delta_ms=delta_ms,
+                        since_start_ms=since_start_ms,
+                        since_first_token_ms=since_first_token_ms,
+                        sequence_length=prompt_tokens + token_index,
+                    )
+                )
+                t_last_recorded = now
+
+        prev_time = now
 
     if response is None or t_first_token is None:
         raise RuntimeError("No tokens generated")
 
+    # If the final generated token was skipped by stride, append it explicitly.
+    # delta_ms is measured from t_last_recorded (the previous stored entry),
+    # not from prev_time which always equals now after the loop.
+    final_token_index = response.generation_tokens
+    if (
+        capture_traces
+        and include_final
+        and per_token_timings
+        and (max_trace_tokens is None or final_token_index <= max_trace_tokens)
+        and per_token_timings[-1].token_index != final_token_index
+    ):
+        per_token_timings.append(
+            TokenTiming(
+                token_index=final_token_index,
+                delta_ms=(now - t_last_recorded) * 1000,
+                since_start_ms=(now - t_start) * 1000,
+                since_first_token_ms=(now - t_first_token) * 1000,
+                sequence_length=prompt_tokens + final_token_index,
+            )
+        )
+
     ttft_ms = (t_first_token - t_start) * 1000
 
-    return (
-        tokenizer_time_ms,
-        ttft_ms,
-        response.prompt_tps,
-        response.generation_tps,
-        response.peak_memory,
-        response.generation_tokens,
+    return ContextScaleRunResult(
+        run_index=run_index,
+        tokenizer_time_ms=tokenizer_time_ms,
+        ttft_ms=ttft_ms,
+        prompt_tps=response.prompt_tps,
+        generation_tps=response.generation_tps,
+        peak_memory_gb=response.peak_memory,
+        generation_tokens=response.generation_tokens,
+        prompt_tokens=prompt_tokens,
+        per_token_timings=per_token_timings,
     )
 
 
@@ -186,8 +290,8 @@ def run_ctx_sweep(
     model_name = config.model_name
     mx.random.seed(config.seed)
 
-    pre_load_available_gb = psutil.virtual_memory().available / 1e9
-    logger.info(f"Pre-load available memory: {pre_load_available_gb:.2f} GB")
+    pre_load_available_gb = psutil.virtual_memory().available / (1024**3)
+    logger.info(f"Pre-load available memory: {pre_load_available_gb:.2f} GiB")
 
     logger.info(f"Loading model {model_name}...")
     load_result = cast(
@@ -196,31 +300,123 @@ def run_ctx_sweep(
     )
     model, tokenizer, model_config = load_result
 
+    text_config = _resolve_text_config(model_config)
+
     results: list[ContextScaleResult] = []
 
     try:
         for task in tasks:
+            consecutive_errors = 0
             for context_size in config.context_sizes:
-                logger.info(f"Preparing task {task.task_id} at size {context_size}")
+                if consecutive_errors >= 3:
+                    logger.warning(
+                        f"Task {task.task_id} hit 3 consecutive errors, "
+                        f"bailing out of remaining context sizes."
+                    )
+                    break
 
-                messages, actual_tokens = _build_context(task, context_size, tokenizer)
+                actual_tokens = 0
+                try:
+                    logger.info(f"Preparing task {task.task_id} at size {context_size}")
 
-                safe, reason = _memory_preflight(
-                    task,
-                    actual_tokens,
-                    model_config,
-                    config.force_run,
-                    config.memory_safety_threshold,
-                    config.generation_headroom_gb,
-                    pre_load_available_gb,
-                )
+                    messages, actual_tokens = _build_context(
+                        task, context_size, tokenizer
+                    )
 
-                if not safe:
+                    safe, reason = _memory_preflight(
+                        task,
+                        actual_tokens,
+                        text_config,
+                        config.force_run,
+                        config.memory_safety_threshold,
+                        config.generation_headroom_gb,
+                        pre_load_available_gb,
+                        kv_quant_bits=config.kv_quant_bits,
+                    )
+
+                    if not safe:
+                        results.append(
+                            ContextScaleResult(
+                                task_id=task.task_id,
+                                target_context_tokens=context_size,
+                                actual_context_tokens=0,
+                                tokenizer_time_ms=0,
+                                ttft_ms=0,
+                                prompt_tps=0,
+                                generation_tps=0,
+                                peak_memory_gb=0,
+                                generation_tokens=0,
+                                skipped=True,
+                                skip_reason=reason,
+                            )
+                        )
+                        continue
+
+                    # Warmup
+                    for _ in range(config.warmup_runs):
+                        _single_run(
+                            model,
+                            tokenizer,
+                            messages,
+                            config.max_tokens,
+                            config=None,
+                        )
+
+                    # Measure
+                    measured_runs: list[ContextScaleRunResult] = []
+                    num_runs = config.num_runs
+                    for i in range(num_runs):
+                        measured_runs.append(
+                            _single_run(
+                                model,
+                                tokenizer,
+                                messages,
+                                config.max_tokens,
+                                run_index=i + 1,
+                                config=config,
+                            )
+                        )
+
+                    # Aggregate
+                    avg_tok_time = (
+                        sum(r.tokenizer_time_ms for r in measured_runs) / num_runs
+                    )
+                    avg_ttft = sum(r.ttft_ms for r in measured_runs) / num_runs
+                    avg_ptps = sum(r.prompt_tps for r in measured_runs) / num_runs
+                    avg_gtps = sum(r.generation_tps for r in measured_runs) / num_runs
+                    avg_peak_mem = (
+                        sum(r.peak_memory_gb for r in measured_runs) / num_runs
+                    )
+                    # Use generation tokens from the last run
+                    gen_tokens = measured_runs[-1].generation_tokens
+
+                    res = ContextScaleResult(
+                        task_id=task.task_id,
+                        target_context_tokens=context_size,
+                        actual_context_tokens=actual_tokens,
+                        tokenizer_time_ms=avg_tok_time,
+                        ttft_ms=avg_ttft,
+                        prompt_tps=avg_ptps,
+                        generation_tps=avg_gtps,
+                        peak_memory_gb=avg_peak_mem,
+                        generation_tokens=gen_tokens,
+                        runs=measured_runs,
+                    )
+                    results.append(res)
+
+                    logger.success(
+                        f"Task {task.task_id} @ {context_size} done. "
+                        f"TTFT: {avg_ttft:.1f}ms"
+                    )
+                    consecutive_errors = 0  # reset on success
+
+                except Exception as exc:
+                    logger.error(f"Task {task.task_id} @ {context_size} FAILED: {exc}")
                     results.append(
                         ContextScaleResult(
                             task_id=task.task_id,
                             target_context_tokens=context_size,
-                            actual_context_tokens=0,
+                            actual_context_tokens=actual_tokens,
                             tokenizer_time_ms=0,
                             ttft_ms=0,
                             prompt_tps=0,
@@ -228,47 +424,14 @@ def run_ctx_sweep(
                             peak_memory_gb=0,
                             generation_tokens=0,
                             skipped=True,
-                            skip_reason=reason,
+                            skip_reason=f"error: {exc}",
                         )
                     )
+                    # Clear GPU caches to attempt recovery for subsequent sizes
+                    mx.clear_cache()
+                    gc.collect()
+                    consecutive_errors += 1
                     continue
-
-                # Warmup
-                for _ in range(config.warmup_runs):
-                    _single_run(model, tokenizer, messages, config.max_tokens)
-
-                # Measure
-                metrics = []
-                num_runs = config.num_runs
-                for _ in range(num_runs):
-                    metrics.append(
-                        _single_run(model, tokenizer, messages, config.max_tokens)
-                    )
-
-                # Aggregate
-                avg_tok_time = sum(m[0] for m in metrics) / num_runs
-                avg_ttft = sum(m[1] for m in metrics) / num_runs
-                avg_ptps = sum(m[2] for m in metrics) / num_runs
-                avg_gtps = sum(m[3] for m in metrics) / num_runs
-                avg_peak_mem = sum(m[4] for m in metrics) / num_runs
-                gen_tokens = metrics[-1][5]
-
-                res = ContextScaleResult(
-                    task_id=task.task_id,
-                    target_context_tokens=context_size,
-                    actual_context_tokens=actual_tokens,
-                    tokenizer_time_ms=avg_tok_time,
-                    ttft_ms=avg_ttft,
-                    prompt_tps=avg_ptps,
-                    generation_tps=avg_gtps,
-                    peak_memory_gb=avg_peak_mem,
-                    generation_tokens=gen_tokens,
-                )
-                results.append(res)
-
-                logger.success(
-                    f"Task {task.task_id} @ {context_size} done. TTFT: {avg_ttft:.1f}ms"
-                )
     finally:
         unload(model=model, tokenizer=tokenizer)
 
